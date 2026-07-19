@@ -1,4 +1,4 @@
-import { logger } from "../utils/logger.js";
+import { logger, startupLog } from "../utils/logger.js";
 
 let accessToken = null;
 let wasLive = false;
@@ -12,10 +12,15 @@ async function getTwitchToken() {
   );
 
   const data = await response.json();
+
+  if (!data.access_token) {
+    throw new Error("Geen Twitch access token ontvangen");
+  }
+
   return data.access_token;
 }
 
-async function checkTwitch(channel, client) {
+async function checkTwitch(channel) {
   try {
     if (!accessToken) {
       accessToken = await getTwitchToken();
@@ -38,11 +43,11 @@ async function checkTwitch(channel, client) {
     if (live && !wasLive) {
       wasLive = true;
 
-      await channel.send({
-        content: "🔴 **MainlyMaxime is LIVE!**\nhttps://twitch.tv/mainlymaxime",
-      });
+      await channel.send(
+        "🔴 **MainlyMaxime is LIVE!**\nhttps://twitch.tv/mainlymaxime"
+      );
 
-      logger.info("Twitch live melding verstuurd!");
+      startupLog("✅ Twitch live melding verstuurd!");
     }
 
     if (!live) {
@@ -55,25 +60,27 @@ async function checkTwitch(channel, client) {
 }
 
 export async function initTwitch(client) {
+  startupLog("Twitch module gestart...");
+
   const channelId = process.env.TWITCH_NOTIFY_CHANNEL_ID;
 
   if (!channelId) {
-    logger.warn("TWITCH_NOTIFY_CHANNEL_ID ontbreekt");
+    startupLog("⚠️ TWITCH_NOTIFY_CHANNEL_ID ontbreekt");
     return;
   }
 
   const channel = await client.channels.fetch(channelId);
 
   if (!channel) {
-    logger.warn("Discord kanaal voor Twitch meldingen niet gevonden");
+    startupLog("⚠️ Twitch Discord kanaal niet gevonden");
     return;
   }
 
-  logger.info("Twitch checker gestart");
+  startupLog("✅ Twitch checker actief");
 
-  checkTwitch(channel, client);
+  checkTwitch(channel);
 
   setInterval(() => {
-    checkTwitch(channel, client);
+    checkTwitch(channel);
   }, 60000);
 }

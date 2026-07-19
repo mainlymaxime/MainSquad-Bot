@@ -126,9 +126,9 @@ export const botConfig = {
         closed: "#ED4245",
         pending: "#99AAB5",
       },
-      economy: "#F1C40F",
-      birthday: "#E91E63",
-      moderation: "#9B59B6",
+      economy: "#c27080",
+      birthday: "#c27080",
+      moderation: "#c27080",
 
       // Ticket priority color mapping.
       priority: {
@@ -141,7 +141,7 @@ export const botConfig = {
     },
     footer: {
       // Default footer text used in bot embeds.
-      text: "Titan Bot",
+      text: "MainSquad Bot",
       // Footer icon URL (null = no icon).
       icon: null,
     },

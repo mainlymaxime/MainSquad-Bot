@@ -2,12 +2,12 @@ import { SlashCommandBuilder } from 'discord.js';
 
 export default {
     data: new SlashCommandBuilder()
-        .setName('twitch')
-        .setDescription('Twitch koppeling'),
+        .setName('testtwitch')
+        .setDescription('Test Twitch command'),
 
     async execute(interaction) {
         await interaction.reply({
-            content: '💗 Twitch command werkt!',
+            content: '💗 Test werkt!',
             ephemeral: true
         });
     }

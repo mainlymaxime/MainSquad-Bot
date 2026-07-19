@@ -1,151 +1,233 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { getFromDb, setInDb } from '../../utils/database.js';
+import { logger, startupLog } from "../utils/logger.js";
+import { getFromDb } from "../utils/database.js";
 
-export default {
-    data: new SlashCommandBuilder()
-        .setName('twitch')
-        .setDescription('Twitch koppeling')
+let accessToken = null;
 
-        .addSubcommand(sub =>
-            sub
-                .setName('connect')
-                .setDescription('Koppel je Twitch account')
-                .addStringOption(option =>
-                    option
-                        .setName('username')
-                        .setDescription('Je Twitch gebruikersnaam')
-                        .setRequired(true)
-                )
-        )
-
-        .addSubcommand(sub =>
-            sub
-                .setName('disconnect')
-                .setDescription('Ontkoppel je Twitch account')
-        )
-
-        .addSubcommand(sub =>
-            sub
-                .setName('status')
-                .setDescription('Bekijk je Twitch koppeling')
-        ),
+// Houdt bij wie al een melding heeft gehad
+const liveUsers = new Set();
 
 
-    async execute(interaction) {
-
-        const sub = interaction.options.getSubcommand();
-
-        const guildId = interaction.guild.id;
-        const userId = interaction.user.id;
-
-        const databaseKey = `twitch:connections:${guildId}`;
-
-
-        // -------------------------
-        // TWITCH CONNECT
-        // -------------------------
-        if (sub === 'connect') {
-
-            const username = interaction.options.getString('username');
-
-
-            const connections = await getFromDb(databaseKey, {});
-
-
-            connections[userId] = {
-                twitchUsername: username,
-                connectedAt: Date.now()
-            };
-
-
-            await setInDb(databaseKey, connections);
-
-
-            await interaction.reply({
-                content:
-                    `💗 Twitch account gekoppeld!\n\n` +
-                    `Discord: **${interaction.user.username}**\n` +
-                    `Twitch: **${username}**`,
-                ephemeral: true
-            });
-
-            return;
+async function getTwitchToken() {
+    const response = await fetch(
+        `https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`,
+        {
+            method: "POST",
         }
+    );
+
+    const data = await response.json();
+
+    if (!data.access_token) {
+        throw new Error("Geen Twitch access token ontvangen");
+    }
+
+    return data.access_token;
+}
 
 
 
-        // -------------------------
-        // TWITCH DISCONNECT
-        // -------------------------
-        if (sub === 'disconnect') {
+async function getStream(username) {
+
+    if (!accessToken) {
+        accessToken = await getTwitchToken();
+    }
 
 
-            const connections = await getFromDb(databaseKey, {});
-
-
-            if (!connections[userId]) {
-
-                await interaction.reply({
-                    content: '❌ Je hebt geen Twitch account gekoppeld.',
-                    ephemeral: true
-                });
-
-                return;
-            }
-
-
-            delete connections[userId];
-
-
-            await setInDb(databaseKey, connections);
-
-
-            await interaction.reply({
-                content: '💔 Twitch account ontkoppeld.',
-                ephemeral: true
-            });
-
-            return;
+    const response = await fetch(
+        `https://api.twitch.tv/helix/streams?user_login=${username}`,
+        {
+            headers: {
+                "Client-ID": process.env.TWITCH_CLIENT_ID,
+                Authorization: `Bearer ${accessToken}`,
+            },
         }
+    );
+
+
+    const data = await response.json();
+
+    if (data.data && data.data.length > 0) {
+        return data.data[0];
+    }
+
+
+    return null;
+}
 
 
 
 
-        // -------------------------
-        // TWITCH STATUS
-        // -------------------------
-        if (sub === 'status') {
+async function checkCommunityTwitch(client) {
+
+    try {
+
+        const guildId = client.guilds.cache.first()?.id;
+
+        if (!guildId) return;
 
 
-            const connections = await getFromDb(databaseKey, {});
+        const connections = await getFromDb(
+            `twitch:connections:${guildId}`,
+            {}
+        );
 
 
-            const account = connections[userId];
+        const channel = await client.channels.fetch(
+            "1261112174609432627"
+        );
 
 
-            if (!account) {
+        if (!channel) return;
 
-                await interaction.reply({
+
+
+        for (const userId in connections) {
+
+
+            const twitchUser = connections[userId];
+
+
+            if (!twitchUser?.twitchUsername) continue;
+
+
+            const stream = await getStream(
+                twitchUser.twitchUsername
+            );
+
+
+            if (stream) {
+
+
+                if (liveUsers.has(twitchUser.twitchUsername)) {
+                    continue;
+                }
+
+
+                liveUsers.add(twitchUser.twitchUsername);
+
+
+
+                await channel.send({
+
                     content:
-                        '❌ Je hebt nog geen Twitch account gekoppeld.\n\n' +
-                        'Gebruik `/twitch connect`',
-                    ephemeral: true
+                        `🔴 <@${userId}> is nu LIVE op Twitch!`,
+
+                    embeds: [
+
+                        {
+                            color: 0xc27080,
+
+
+                            title:
+                                `🔴 ${twitchUser.twitchUsername} is LIVE! 🩷`,
+
+
+                            description:
+                                `Kom gezellig kijken en support je MainSquad member ✨\n\n` +
+                                `**${stream.title}**`,
+
+
+                            image: {
+                                url:
+                                stream.thumbnail_url
+                                .replace("{width}", "1280")
+                                .replace("{height}", "720")
+                            },
+
+
+                            footer: {
+                                text:
+                                "MainSquad 🩷"
+                            },
+
+
+                            timestamp:
+                                new Date()
+                        }
+
+                    ],
+
+
+                    components: [
+
+                        {
+                            type: 1,
+
+                            components: [
+
+                                {
+                                    type: 2,
+
+                                    style: 5,
+
+                                    label:
+                                    "🩷 Klik hier voor de stream",
+
+                                    url:
+                                    `https://twitch.tv/${twitchUser.twitchUsername}`
+                                }
+
+                            ]
+                        }
+
+                    ]
+
                 });
 
-                return;
+
+                startupLog(
+                    `✅ Twitch melding gestuurd voor ${twitchUser.twitchUsername}`
+                );
+
+            } else {
+
+
+                // reset zodat hij later opnieuw kan melden
+                liveUsers.delete(
+                    twitchUser.twitchUsername
+                );
+
             }
 
-
-
-            await interaction.reply({
-                content:
-                    `📺 Jouw Twitch koppeling:\n\n` +
-                    `Twitch: **${account.twitchUsername}**\n` +
-                    `Gekoppeld op: <t:${Math.floor(account.connectedAt / 1000)}:R>`,
-                ephemeral: true
-            });
-
         }
+
+
+    } catch(error) {
+
+        logger.error(
+            "Community Twitch check fout:",
+            error
+        );
 
     }
-};
+
+}
+
+
+
+
+
+export async function initTwitch(client) {
+
+
+    startupLog(
+        "Twitch module gestart..."
+    );
+
+
+    startupLog(
+        "✅ Twitch checker actief"
+    );
+
+
+    checkCommunityTwitch(client);
+
+
+
+    setInterval(() => {
+
+        checkCommunityTwitch(client);
+
+    }, 60000);
+
+}

@@ -43,9 +43,53 @@ async function checkTwitch(channel) {
     if (live && !wasLive) {
       wasLive = true;
 
-      await channel.send(
-        "🔴 **MainlyMaxime is LIVE!**\nhttps://twitch.tv/mainlymaxime"
-      );
+      const stream = data.data[0];
+
+      const thumbnail = stream.thumbnail_url
+        ? stream.thumbnail_url
+            .replace("{width}", "1280")
+            .replace("{height}", "720")
+        : "https://cdn.discordapp.com/attachments/1325895597458325536/1528283922264231946/is_currently_offline_1.png?ex=6a5dbcd1&is=6a5c6b51&hm=d0eaf5300f2a6002689450aba1bc6d0c0d07acb05a2b640fe89129ffb7c152a3&";
+
+      await channel.send({
+        content: "🔴 @everyone MainlyMaxime is LIVE! 🩷",
+
+        embeds: [
+          {
+            color: 0xc27080,
+
+            title: "🔴 MainlyMaxime is LIVE!",
+            url: "https://twitch.tv/mainlymaxime",
+
+            description:
+              "✨ **Kom gezellig kijken bij de MainSquad!**\n\n" +
+              `📝 **${stream.title}**`,
+
+            fields: [
+              {
+                name: "🎮 Game",
+                value: stream.game_name || "Geen categorie",
+                inline: true,
+              },
+              {
+                name: "👀 Kijkers",
+                value: `${stream.viewer_count}`,
+                inline: true,
+              },
+            ],
+
+            image: {
+              url: thumbnail,
+            },
+
+            footer: {
+              text: "MainlyMaxime • MainSquad 🩷",
+            },
+
+            timestamp: new Date(),
+          },
+        ],
+      });
 
       startupLog("✅ Twitch live melding verstuurd!");
     }
@@ -58,6 +102,7 @@ async function checkTwitch(channel) {
     logger.error("Twitch check fout:", error);
   }
 }
+
 
 export async function initTwitch(client) {
   startupLog("Twitch module gestart...");

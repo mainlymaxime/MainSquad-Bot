@@ -43,47 +43,29 @@ async function checkTwitch(channel) {
     if (live && !wasLive) {
       wasLive = true;
 
-      const stream = data.data[0];
-
-      const thumbnail = stream.thumbnail_url
-        ? stream.thumbnail_url
-            .replace("{width}", "1280")
-            .replace("{height}", "720")
-        : "https://cdn.discordapp.com/attachments/1325895597458325536/1528283922264231946/is_currently_offline_1.png?ex=6a5dbcd1&is=6a5c6b51&hm=d0eaf5300f2a6002689450aba1bc6d0c0d07acb05a2b640fe89129ffb7c152a3&";
-
       await channel.send({
-        content: "🔴 @everyone MainlyMaxime is LIVE! 🩷",
+        content: "🔴 @everyone",
 
         embeds: [
           {
             color: 0xc27080,
 
-            title: "🔴 MainlyMaxime is LIVE!",
-            url: "https://twitch.tv/mainlymaxime",
+            title: "🔴 MainlyMaxime is LIVE! 🩷",
 
             description:
-              "✨ **Kom gezellig kijken bij de MainSquad!**\n\n" +
-              `📝 **${stream.title}**`,
+              "Hiya! ya gurl is nu Live 🩷\n\n" +
+              "Kom je chillen en yappen? ✨\n\n" +
+              "*Wist jij dat je door te kijken punten verzameld? " +
+              "Deze zijn mega handig voor de opkomende give-aways!* 🎁",
 
-            fields: [
-              {
-                name: "🎮 Game",
-                value: stream.game_name || "Geen categorie",
-                inline: true,
-              },
-              {
-                name: "👀 Kijkers",
-                value: `${stream.viewer_count}`,
-                inline: true,
-              },
-            ],
+            url: "https://twitch.tv/mainlymaxime",
 
             image: {
-              url: thumbnail,
+              url: "https://cdn.discordapp.com/attachments/1325895597458325536/1528283922264231946/is_currently_offline_1.png?ex=6a5dbcd1&is=6a5c6b51&hm=d0eaf5300f2a6002689450aba1bc6d0c0d07acb05a2b640fe89129ffb7c152a3&",
             },
 
             footer: {
-              text: "MainlyMaxime • MainSquad 🩷",
+              text: "MainSquad 🩷 • MainlyMaxime",
             },
 
             timestamp: new Date(),

@@ -19,7 +19,7 @@ export default {
       startupLog(`Serving ${client.guilds.cache.size} guild(s)`);
       startupLog(`Loaded ${client.commands.size} commands`);
 
-      // Twitch live meldingen starten
+      // Start Twitch live checker
       initTwitch(client);
 
       if (client.config?.features?.music) {
@@ -43,7 +43,7 @@ export default {
 
       const reactionRolePanelSummary = await reconcileReactionRolePanelHealth(client);
       startupLog(
-        `Reaction role panel health: scanned ${reactionRolePanelSummary.scannedPanels} panels, healthy ${reactionRolePanelSummary.healthyPanels}, deleted ${reactionRolePanelSummary.deletedPanels}, missing channel ${reactionRolePanelSummary.missingChannels}, recovered ${reactionRoleSummary.recoveredIds}, errors ${reactionRolePanelSummary.errors}`
+        `Reaction role panel health: scanned ${reactionRolePanelSummary.scannedPanels} panels, healthy ${reactionRolePanelSummary.healthyPanels}, deleted ${reactionRolePanelSummary.deletedPanels}, missing channel ${reactionRolePanelSummary.missingChannels}, recovered ${reactionRolePanelSummary.recoveredIds}, errors ${reactionRolePanelSummary.errors}`
       );
 
       const levelRoleSummary = await reconcileLevelRoles(client);

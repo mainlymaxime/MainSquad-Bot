@@ -1,3 +1,5 @@
+console.log("TWITCH COMMAND FILE GELADEN");
+
 import { SlashCommandBuilder } from 'discord.js';
 
 export default {

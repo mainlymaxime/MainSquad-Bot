@@ -58,8 +58,6 @@ async function checkTwitch(channel) {
               "*Wist jij dat je door te kijken punten verzameld? " +
               "Deze zijn mega handig voor de opkomende give-aways!* 🎁",
 
-            url: "https://twitch.tv/mainlymaxime",
-
             image: {
               url: "https://cdn.discordapp.com/attachments/1325895597458325536/1528283922264231946/is_currently_offline_1.png?ex=6a5dbcd1&is=6a5c6b51&hm=d0eaf5300f2a6002689450aba1bc6d0c0d07acb05a2b640fe89129ffb7c152a3&",
             },
@@ -69,6 +67,20 @@ async function checkTwitch(channel) {
             },
 
             timestamp: new Date(),
+          },
+        ],
+
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: "🩷 Klik hier voor de stream",
+                url: "https://twitch.tv/mainlymaxime",
+              },
+            ],
           },
         ],
       });

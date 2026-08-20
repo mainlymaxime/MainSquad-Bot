@@ -25,9 +25,7 @@ export default {
         const { guild, user } = member;
         
         const config = await getGuildConfig(member.client, guild.id);
-        
         const welcomeConfig = await getWelcomeConfig(member.client, guild.id);
-        
         const welcomeChannelId = welcomeConfig?.channelId;
 
         if (welcomeConfig?.enabled && welcomeChannelId) {
@@ -39,8 +37,6 @@ export default {
                     ? channel.permissionsFor(me)
                     : null;
 
-            // Skip only the welcome message if permissions are missing.
-            // The rest of the join pipeline must still run.
             if (
                 permissions?.has([
                     PermissionFlagsBits.ViewChannel,
@@ -145,10 +141,18 @@ export default {
                                 `https://discord.com/channels/${guild.id}/1225514970108923934`
                             );
 
+                    const birthdayButton =
+                        new ButtonBuilder()
+                            .setCustomId('welcome_birthday')
+                            .setLabel('Verjaardag toevoegen')
+                            .setEmoji('🎂')
+                            .setStyle(ButtonStyle.Primary);
+
                     const welcomeButtons =
                         new ActionRowBuilder()
                             .addComponents(
-                                rulesButton
+                                rulesButton,
+                                birthdayButton
                             );
                     
                     await channel.send({

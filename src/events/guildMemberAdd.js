@@ -148,11 +148,19 @@ export default {
                             .setEmoji('🎂')
                             .setStyle(ButtonStyle.Primary);
 
+                    const twitchButton =
+                        new ButtonBuilder()
+                            .setCustomId('welcome_twitch')
+                            .setLabel('Twitch koppelen')
+                            .setEmoji('💜')
+                            .setStyle(ButtonStyle.Primary);
+
                     const welcomeButtons =
                         new ActionRowBuilder()
                             .addComponents(
                                 rulesButton,
-                                birthdayButton
+                                birthdayButton,
+                                twitchButton
                             );
                     
                     await channel.send({

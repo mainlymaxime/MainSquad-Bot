@@ -1,4 +1,12 @@
-import { Events, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import {
+    Events,
+    EmbedBuilder,
+    PermissionFlagsBits,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
+} from 'discord.js';
+
 import { getColor, botConfig } from '../config/bot.js';
 import { getGuildConfig } from '../services/config/guildConfig.js';
 import { getWelcomeConfig } from '../utils/database.js';
@@ -25,174 +33,395 @@ export default {
         if (welcomeConfig?.enabled && welcomeChannelId) {
             const channel = guild.channels.cache.get(welcomeChannelId);
             const me = guild.members.me;
-            const permissions = channel?.isTextBased?.() && me ? channel.permissionsFor(me) : null;
-            // Skip only the welcome message if permissions are missing; the rest of the
-            // join pipeline (auto-role, verification, logging, counters) must still run.
-            if (permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])) {
-                const formatData = { user, guild, member };
+
+            const permissions =
+                channel?.isTextBased?.() && me
+                    ? channel.permissionsFor(me)
+                    : null;
+
+            // Skip only the welcome message if permissions are missing.
+            // The rest of the join pipeline must still run.
+            if (
+                permissions?.has([
+                    PermissionFlagsBits.ViewChannel,
+                    PermissionFlagsBits.SendMessages
+                ])
+            ) {
+                const formatData = {
+                    user,
+                    guild,
+                    member
+                };
+
                 const welcomeMessage = formatWelcomeMessage(
-                    welcomeConfig.welcomeMessage || welcomeConfig.welcomeEmbed?.description || botConfig.welcome?.defaultWelcomeMessage || 'Welcome {user} to {server}!',
+                    welcomeConfig.welcomeMessage ||
+                    welcomeConfig.welcomeEmbed?.description ||
+                    botConfig.welcome?.defaultWelcomeMessage ||
+                    'Welcome {user} to {server}!',
                     formatData
                 );
 
-                const messageContent = welcomeConfig.welcomePing ? user.toString() : null;
+                const messageContent =
+                    welcomeConfig.welcomePing
+                        ? user.toString()
+                        : null;
 
                 const embedTitle = formatWelcomeMessage(
-                    welcomeConfig.welcomeEmbed?.title || '🎉 Welcome!',
+                    welcomeConfig.welcomeEmbed?.title ||
+                    '🎉 Welcome!',
                     formatData
                 );
-                const embedFooter = welcomeConfig.welcomeEmbed?.footer
-                    ? formatWelcomeMessage(welcomeConfig.welcomeEmbed.footer, formatData)
-                    : `Welcome to ${guild.name}!`;
 
-                const canEmbed = permissions.has(PermissionFlagsBits.EmbedLinks);
+                const embedFooter =
+                    welcomeConfig.welcomeEmbed?.footer
+                        ? formatWelcomeMessage(
+                            welcomeConfig.welcomeEmbed.footer,
+                            formatData
+                        )
+                        : `Welcome to ${guild.name}!`;
+
+                const canEmbed =
+                    permissions.has(
+                        PermissionFlagsBits.EmbedLinks
+                    );
 
                 if (!canEmbed) {
                     await channel.send({
-                        content: messageContent || welcomeMessage
+                        content:
+                            messageContent ||
+                            welcomeMessage
                     });
                 } else {
                     const embed = new EmbedBuilder()
-                        .setColor(welcomeConfig.welcomeEmbed?.color || getColor('success'))
+                        .setColor(
+                            welcomeConfig.welcomeEmbed?.color ||
+                            getColor('success')
+                        )
                         .setTitle(embedTitle)
                         .setDescription(welcomeMessage)
-                        .setThumbnail(user.displayAvatarURL())
+                        .setThumbnail(
+                            user.displayAvatarURL()
+                        )
                         .addFields(
-                            { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
-                            { name: 'Member Count', value: guild.memberCount.toString(), inline: true }
+                            {
+                                name: 'User',
+                                value: `${user.tag} (${user.id})`,
+                                inline: true
+                            },
+                            {
+                                name: 'Member Count',
+                                value:
+                                    guild.memberCount.toString(),
+                                inline: true
+                            }
                         )
                         .setTimestamp()
-                        .setFooter({ text: embedFooter });
+                        .setFooter({
+                            text: embedFooter
+                        });
                     
                     if (welcomeConfig.welcomeImage) {
-                        embed.setImage(welcomeConfig.welcomeImage);
-                    } else if (welcomeConfig.welcomeEmbed?.image?.url) {
-                        embed.setImage(welcomeConfig.welcomeEmbed.image.url);
+                        embed.setImage(
+                            welcomeConfig.welcomeImage
+                        );
+                    } else if (
+                        welcomeConfig.welcomeEmbed?.image?.url
+                    ) {
+                        embed.setImage(
+                            welcomeConfig.welcomeEmbed.image.url
+                        );
                     }
+
+                    // =====================================================
+                    // WELCOME BUTTONS
+                    // =====================================================
+
+                    const rulesButton =
+                        new ButtonBuilder()
+                            .setLabel('Lees de regels')
+                            .setEmoji('📜')
+                            .setStyle(ButtonStyle.Link)
+                            .setURL(
+                                `https://discord.com/channels/${guild.id}/1225514970108923934`
+                            );
+
+                    const welcomeButtons =
+                        new ActionRowBuilder()
+                            .addComponents(
+                                rulesButton
+                            );
                     
-                    await channel.send({ 
+                    await channel.send({
                         content: messageContent,
-                        embeds: [embed] 
+                        embeds: [embed],
+                        components: [
+                            welcomeButtons
+                        ]
                     });
                 }
             }
         }
         
-        if (welcomeConfig?.roleIds && welcomeConfig.roleIds.length > 0) {
-            const delay = welcomeConfig.autoRoleDelay || 0;
-            const singleRoleId = welcomeConfig.roleIds[0];
+        // =========================================================
+        // AUTO ROLE
+        // =========================================================
+
+        if (
+            welcomeConfig?.roleIds &&
+            welcomeConfig.roleIds.length > 0
+        ) {
+            const delay =
+                welcomeConfig.autoRoleDelay || 0;
+
+            const singleRoleId =
+                welcomeConfig.roleIds[0];
             
             if (delay > 0) {
-                const timeout = setTimeout(async () => {
-                    const role = guild.roles.cache.get(singleRoleId);
-                    if (role) {
-                        await assignRoleSafely(member, role);
-                    }
-                }, delay * 1000);
-                if (typeof timeout.unref === 'function') {
+                const timeout =
+                    setTimeout(
+                        async () => {
+                            const role =
+                                guild.roles.cache.get(
+                                    singleRoleId
+                                );
+
+                            if (role) {
+                                await assignRoleSafely(
+                                    member,
+                                    role
+                                );
+                            }
+                        },
+                        delay * 1000
+                    );
+
+                if (
+                    typeof timeout.unref ===
+                    'function'
+                ) {
                     timeout.unref();
                 }
             } else {
-                const role = guild.roles.cache.get(singleRoleId);
+                const role =
+                    guild.roles.cache.get(
+                        singleRoleId
+                    );
+
                 if (role) {
-                    await assignRoleSafely(member, role);
+                    await assignRoleSafely(
+                        member,
+                        role
+                    );
                 }
             }
         }
         
-        if (config?.verification?.enabled || config?.verification?.autoVerify?.enabled) {
-            await handleVerification(member, guild, config.verification, member.client);
+        // =========================================================
+        // VERIFICATION
+        // =========================================================
+
+        if (
+            config?.verification?.enabled ||
+            config?.verification
+                ?.autoVerify?.enabled
+        ) {
+            await handleVerification(
+                member,
+                guild,
+                config.verification,
+                member.client
+            );
         }
+
+        // =========================================================
+        // MEMBER JOIN LOG
+        // =========================================================
 
         try {
             await logEvent({
                 client: member.client,
                 guildId: guild.id,
-                eventType: EVENT_TYPES.MEMBER_JOIN,
+                eventType:
+                    EVENT_TYPES.MEMBER_JOIN,
                 data: {
                     title: 'User joined',
                     lines: [
                         `**User:** ${user.toString()} (${user.displayName !== user.username ? `@${user.displayName}` : user.tag})`,
                         `**ID:** \`${user.id}\``,
                         `**Created:** <t:${Math.floor(user.createdTimestamp / 1000)}:R>`,
-                        `**Members:** ${guild.memberCount}`,
+                        `**Members:** ${guild.memberCount}`
                     ],
                     quoted: false,
-                    thumbnail: user.displayAvatarURL({ dynamic: true }),
-                    userId: user.id,
+                    thumbnail:
+                        user.displayAvatarURL({
+                            dynamic: true
+                        }),
+                    userId: user.id
                 }
             });
         } catch (error) {
-            logger.debug('Error logging member join:', error);
+            logger.debug(
+                'Error logging member join:',
+                error
+            );
         }
 
+        // =========================================================
+        // SERVER COUNTERS
+        // =========================================================
+
         try {
-            const counters = await getServerCounters(member.client, guild.id);
+            const counters =
+                await getServerCounters(
+                    member.client,
+                    guild.id
+                );
+
             for (const counter of counters) {
-                if (counter && counter.type && counter.channelId && counter.enabled !== false) {
-                    await updateCounter(member.client, guild, counter);
+                if (
+                    counter &&
+                    counter.type &&
+                    counter.channelId &&
+                    counter.enabled !== false
+                ) {
+                    await updateCounter(
+                        member.client,
+                        guild,
+                        counter
+                    );
                 }
             }
         } catch (error) {
-            logger.debug('Error updating counters on member join:', error);
+            logger.debug(
+                'Error updating counters on member join:',
+                error
+            );
         }
 
+        // =========================================================
+        // RESTORE BIRTHDAY IF MEMBER REJOINS
+        // =========================================================
+
         try {
-            const backupKey = `guild:${guild.id}:birthdays:left`;
-            const backup = (await member.client.db.get(backupKey)) || {};
+            const backupKey =
+                `guild:${guild.id}:birthdays:left`;
+
+            const backup =
+                (await member.client.db.get(
+                    backupKey
+                )) || {};
+
             if (backup[user.id]) {
-                const { month, day } = backup[user.id];
-                await dbSetBirthday(member.client, guild.id, user.id, month, day);
+                const {
+                    month,
+                    day
+                } = backup[user.id];
+
+                await dbSetBirthday(
+                    member.client,
+                    guild.id,
+                    user.id,
+                    month,
+                    day
+                );
+
                 delete backup[user.id];
-                await member.client.db.set(backupKey, backup);
-                logger.debug(`Birthday restored for user ${user.id} in guild ${guild.id}`);
+
+                await member.client.db.set(
+                    backupKey,
+                    backup
+                );
+
+                logger.debug(
+                    `Birthday restored for user ${user.id} in guild ${guild.id}`
+                );
             }
         } catch (error) {
-            logger.debug('Error restoring birthday on member join:', error);
+            logger.debug(
+                'Error restoring birthday on member join:',
+                error
+            );
         }
         
     } catch (error) {
-        logger.error('Error in guildMemberAdd event:', error);
+        logger.error(
+            'Error in guildMemberAdd event:',
+            error
+        );
     }
   }
 };
 
-async function handleVerification(member, guild, verificationConfig, client) {
-    const { autoVerifyOnJoin } = await import('../services/verificationService.js');
+async function handleVerification(
+    member,
+    guild,
+    verificationConfig,
+    client
+) {
+    const {
+        autoVerifyOnJoin
+    } = await import(
+        '../services/verificationService.js'
+    );
     
     try {
-        const result = await autoVerifyOnJoin(client, guild, member, verificationConfig);
+        const result =
+            await autoVerifyOnJoin(
+                client,
+                guild,
+                member,
+                verificationConfig
+            );
         
         if (result.autoVerified) {
-            logger.info('User auto-verified on join', {
-                guildId: guild.id,
-                userId: member.id,
-                userTag: member.user.tag,
-                roleName: result.roleName,
-                criteria: result.criteria
-            });
+            logger.info(
+                'User auto-verified on join',
+                {
+                    guildId: guild.id,
+                    userId: member.id,
+                    userTag:
+                        member.user.tag,
+                    roleName:
+                        result.roleName,
+                    criteria:
+                        result.criteria
+                }
+            );
         } else {
-            logger.debug('User not auto-verified on join', {
-                guildId: guild.id,
-                userId: member.id,
-                reason: result.reason
-            });
+            logger.debug(
+                'User not auto-verified on join',
+                {
+                    guildId: guild.id,
+                    userId: member.id,
+                    reason: result.reason
+                }
+            );
         }
 
     } catch (error) {
-        logger.error('Error in auto-verification for member', {
-            guildId: guild.id,
-            userId: member.id,
-            userTag: member.user.tag,
-            error: error.message
-        });
+        logger.error(
+            'Error in auto-verification for member',
+            {
+                guildId: guild.id,
+                userId: member.id,
+                userTag:
+                    member.user.tag,
+                error: error.message
+            }
+        );
     }
 }
 
-async function assignRoleSafely(member, role) {
+async function assignRoleSafely(
+    member,
+    role
+) {
     try {
         await member.roles.add(role);
     } catch (error) {
-        logger.warn(`Failed to assign role ${role.id} to member ${member.id}:`, error);
+        logger.warn(
+            `Failed to assign role ${role.id} to member ${member.id}:`,
+            error
+        );
     }
 }

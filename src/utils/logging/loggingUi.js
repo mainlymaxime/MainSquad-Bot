@@ -23,6 +23,7 @@ export const DASHBOARD_CATEGORIES = [
   'message',
   'role',
   'member',
+  'voice',
   'leveling',
   'reactionrole',
   'giveaway',
@@ -36,6 +37,7 @@ const DASHBOARD_CATEGORY_EMOJIS = {
   message: '✉️',
   role: '🏷️',
   member: '👥',
+  voice: '🔊',
   leveling: '📈',
   reactionrole: '🎭',
   giveaway: '🎁',
@@ -49,6 +51,7 @@ export const DASHBOARD_CATEGORY_LABELS = {
   message: 'Messages',
   role: 'Roles',
   member: 'Members',
+  voice: 'Voice',
   leveling: 'Leveling',
   reactionrole: 'Reaction Roles',
   giveaway: 'Giveaways',
@@ -68,10 +71,17 @@ function createCategoryToggleButtons(enabledEvents = {}, loggingEnabled = false)
   const buttons = DASHBOARD_CATEGORIES.map((category) => {
     const wildcardDisabled = enabledEvents[`${category}.*`] === false;
     const categoryEvents = EVENT_TYPES_BY_CATEGORY[category] || [];
-    const allEnabled = categoryEvents.length === 0
-      ? true
-      : categoryEvents.every((t) => enabledEvents[t] !== false);
-    const isEnabled = loggingEnabled && !wildcardDisabled && allEnabled;
+
+    const allEnabled =
+      categoryEvents.length === 0
+        ? true
+        : categoryEvents.every((t) => enabledEvents[t] !== false);
+
+    const isEnabled =
+      loggingEnabled &&
+      !wildcardDisabled &&
+      allEnabled;
+
     const emoji = DASHBOARD_CATEGORY_EMOJIS[category] || '📌';
     const label = DASHBOARD_CATEGORY_LABELS[category] || category;
 
@@ -82,9 +92,15 @@ function createCategoryToggleButtons(enabledEvents = {}, loggingEnabled = false)
   });
 
   const rows = [];
+
   for (let i = 0; i < buttons.length; i += 5) {
-    rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
+    rows.push(
+      new ActionRowBuilder().addComponents(
+        buttons.slice(i, i + 5),
+      ),
+    );
   }
+
   return rows;
 }
 
@@ -96,36 +112,43 @@ export function createLoggingMainMenuSelect() {
       .addOptions(
         new StringSelectMenuOptionBuilder()
           .setLabel('Set Audit Log Channel')
-          .setDescription('Moderation, messages, members, roles, etc.')
+          .setDescription('Moderation, messages, members, roles, voice, etc.')
           .setValue('set:audit')
           .setEmoji('🧾'),
+
         new StringSelectMenuOptionBuilder()
           .setLabel('Set Applications Channel')
           .setDescription('New applications and review updates')
           .setValue('set:applications')
           .setEmoji('📝'),
+
         new StringSelectMenuOptionBuilder()
           .setLabel('Set Reports Channel')
           .setDescription('User reports filed via /report')
           .setValue('set:reports')
           .setEmoji('🚨'),
+
         new StringSelectMenuOptionBuilder()
           .setLabel('Clear Audit Channel')
           .setValue('clear:audit')
           .setEmoji('🗑️'),
+
         new StringSelectMenuOptionBuilder()
           .setLabel('Clear Applications Channel')
           .setValue('clear:applications')
           .setEmoji('🗑️'),
+
         new StringSelectMenuOptionBuilder()
           .setLabel('Clear Reports Channel')
           .setValue('clear:reports')
           .setEmoji('🗑️'),
+
         new StringSelectMenuOptionBuilder()
           .setLabel('Event Categories')
           .setDescription('Toggle which log types are sent')
           .setValue('view:categories')
           .setEmoji('📋'),
+
         new StringSelectMenuOptionBuilder()
           .setLabel('Manage Ignore Filters')
           .setDescription('Skip logs from specific users or channels')
@@ -140,7 +163,12 @@ export function createLoggingMainActionRow(loggingEnabled = false) {
     new ButtonBuilder()
       .setCustomId('log_dash_toggle:audit_enabled')
       .setLabel('Audit Logging')
-      .setStyle(loggingEnabled ? ButtonStyle.Success : ButtonStyle.Danger),
+      .setStyle(
+        loggingEnabled
+          ? ButtonStyle.Success
+          : ButtonStyle.Danger,
+      ),
+
     new ButtonBuilder()
       .setCustomId('log_dash_refresh')
       .setLabel('Refresh')
@@ -148,22 +176,33 @@ export function createLoggingMainActionRow(loggingEnabled = false) {
   );
 }
 
-export function createLoggingDashboardComponents(_enabledEvents, loggingEnabled = false) {
+export function createLoggingDashboardComponents(
+  _enabledEvents,
+  loggingEnabled = false,
+) {
   return [
     createLoggingMainMenuSelect(),
     createLoggingMainActionRow(loggingEnabled),
   ];
 }
 
-export function createLoggingCategoryViewComponents(enabledEvents, loggingEnabled = false) {
-  const categoryRows = createCategoryToggleButtons(enabledEvents, loggingEnabled);
+export function createLoggingCategoryViewComponents(
+  enabledEvents,
+  loggingEnabled = false,
+) {
+  const categoryRows = createCategoryToggleButtons(
+    enabledEvents,
+    loggingEnabled,
+  );
 
   const actionRow = new ActionRowBuilder().addComponents(
     createBackButton(),
+
     new ButtonBuilder()
       .setCustomId('log_dash_toggle:all')
       .setLabel('Toggle All Categories')
       .setStyle(ButtonStyle.Secondary),
+
     new ButtonBuilder()
       .setCustomId('log_dash_refresh')
       .setLabel('Refresh')
@@ -177,14 +216,17 @@ export function createLoggingFilterComponents() {
   return [
     new ActionRowBuilder().addComponents(
       createBackButton(),
+
       new ButtonBuilder()
         .setCustomId('log_dash_add_filter:user')
         .setLabel('Add User Filter')
         .setStyle(ButtonStyle.Primary),
+
       new ButtonBuilder()
         .setCustomId('log_dash_add_filter:channel')
         .setLabel('Add Channel Filter')
         .setStyle(ButtonStyle.Primary),
+
       new ButtonBuilder()
         .setCustomId('log_dash_remove_filter')
         .setLabel('Remove Filter')

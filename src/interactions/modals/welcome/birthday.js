@@ -5,7 +5,7 @@ import { logger } from '../../../utils/logger.js';
 export default {
   name: 'welcome_birthday_modal',
 
-  async execute(interaction, config, client) {
+  async execute(interaction, client) {
     try {
       const day = Number.parseInt(
         interaction.fields.getTextInputValue('birthday_day'),
@@ -17,7 +17,6 @@ export default {
         10
       );
 
-      // Simpele controle voordat we de birthday service gebruiken
       if (
         !Number.isInteger(day) ||
         !Number.isInteger(month) ||
@@ -60,7 +59,8 @@ export default {
 
       const errorMessage =
         error?.userMessage ||
-        'Dat lukte helaas niet. Controleer je dag en maand en probeer het opnieuw.';
+        error?.message ||
+        'Dat lukte helaas niet. Probeer het opnieuw.';
 
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({

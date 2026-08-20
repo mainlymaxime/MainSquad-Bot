@@ -1,1108 +1,1267 @@
-import 'dotenv/config';
+    import 'dotenv/config';
 
-import {
-  Client,
-  Collection,
-  GatewayIntentBits,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle
-} from 'discord.js';
+    import {
+      Client,
+      Collection,
+      GatewayIntentBits,
+      ActionRowBuilder,
+      ButtonBuilder,
+      ButtonStyle
+    } from 'discord.js';
 
-import { REST } from '@discordjs/rest';
-import express from 'express';
-import cron from 'node-cron';
+    import { REST } from '@discordjs/rest';
+    import express from 'express';
+    import cron from 'node-cron';
 
-import config from './config/application.js';
-import { initializeDatabase } from './utils/database.js';
-import { getGuildConfig } from './services/config/guildConfig.js';
-import {
-  getServerCounters,
-  saveServerCounters,
-  updateCounter
-} from './services/serverstatsService.js';
-import {
-  logger,
-  startupLog,
-  shutdownLog
-} from './utils/logger.js';
-import { checkBirthdays } from './services/birthdayService.js';
-import { checkGiveaways } from './services/giveawayService.js';
-import {
-  loadCommands,
-  registerCommands as registerSlashCommands
-} from './handlers/loaders/commandLoader.js';
-import {
-  runSafeTask,
-  handleTaskError,
-  ErrorCodes
-} from './utils/errorHandler.js';
-import { initializeMusic } from './services/music/riffySetup.js';
-import { shutdownMusic } from './services/music/playerHandler.js';
-import pkg from '../package.json' with { type: 'json' };
-import {
-  EXPECTED_SCHEMA_VERSION,
-  EXPECTED_SCHEMA_LABEL
-} from './config/database/schemaVersion.js';
+    import config from './config/application.js';
+    import { initializeDatabase } from './utils/database.js';
+    import { getGuildConfig } from './services/config/guildConfig.js';
+    import {
+      getServerCounters,
+      saveServerCounters,
+      updateCounter
+    } from './services/serverstatsService.js';
+    import {
+      logger,
+      startupLog,
+      shutdownLog
+    } from './utils/logger.js';
+    import { checkBirthdays } from './services/birthdayService.js';
+    import { checkGiveaways } from './services/giveawayService.js';
+    import {
+      loadCommands,
+      registerCommands as registerSlashCommands
+    } from './handlers/loaders/commandLoader.js';
+    import {
+      runSafeTask,
+      handleTaskError,
+      ErrorCodes
+    } from './utils/errorHandler.js';
+    import { initializeMusic } from './services/music/riffySetup.js';
+    import { shutdownMusic } from './services/music/playerHandler.js';
+    import pkg from '../package.json' with { type: 'json' };
+    import {
+      EXPECTED_SCHEMA_VERSION,
+      EXPECTED_SCHEMA_LABEL
+    } from './config/database/schemaVersion.js';
 
-const WEEKLY_REMINDER_CHANNEL_ID = '1225514970108923940';
+    const WEEKLY_REMINDER_CHANNEL_ID = '1225514970108923940';
+    const COMMUNITY_CHAT_CHANNEL_ID = '1225514970108923940';
 
-class TitanBot extends Client {
-  constructor() {
-    super({
-      intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
+    const GOOD_MORNING_MESSAGES = [
+      'Goedemorgen MainSquad! 💗 Nieuwe dag, nieuwe kansen om ongegeneerd te yappen. 😂☀️',
+      'Mogguh MainSquad! ☀️💗 Hoop dat jullie vandaag een beetje functioneren. 😂',
+      'Goedemorgen lieverds! 💗 Maak er een fijne dag van vandaag. 🌸',
+      'Rise & shine MainSquad! ☀️ Of gewoon rise… shine komt later wel. 😂💗',
+      'Goedemorgen allemaal! 🌸💗 Wie is er al wakker en wie doet alleen alsof? 👀',
+      'Morning MainSquad! 💗 Tijd om deze dag weer op pure chaos en goede vibes te overleven. 😂',
+      'Goedemorgen yappers! ☀️💗 Nieuwe dag, zelfde gezellige bende. 🫶',
+      'Hallooo wakker worden MainSquad! 😂☀️ Ik wens jullie een hele fijne dag vandaag. 💗',
+      'Goedemorgen! 💗 Maak er wat leuks van vandaag — of doe in ieder geval een poging. 😂🌸',
+      'Mogguhhh MainSquad! ☀️💗 Kom maar door met de ochtendchaos. 😂'
+    ];
 
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.DirectMessages,
+    const GOOD_NIGHT_MESSAGES = [
+      'Slaaplekker MainSquad! 🌙💗 Tijd om die hersencellen even op te laden. 😂',
+      'Welterusten lieverds! 💗 Morgen weer een nieuwe dag om gezellig chaos te veroorzaken. 🌙',
+      'Slaaplekker allemaal! 🌙✨ Leg die telefoon nou maar weg… ja jij ook. 👀😂',
+      'Goodnight MainSquad! 💗 Hopelijk slapen jullie lekker en worden jullie morgen iets minder moe wakker. 😂',
+      'Welterusten yappers! 🌙💗 De chat loopt morgen niet weg, beloofd. 🫶',
+      'Slaaplekker! 💗 Voor vandaag is het mooi geweest. Morgen yappen we verder. 😂🌙',
+      'MainSquad, tijd om te gaan nestelen. 😂🌙 Slaap lekker allemaal! 💗',
+      'Welterusten lieverds! 🌸💗 Droom iets leuks en tot morgen!',
+      'Slaaplekker MainSquad! 🌙✨ Oogjes dicht, Discord morgen weer. 😂💗',
+      'Goodnighttt 💗🌙 Dankjewel voor weer een dag gezelligheid. Tot morgen MainSquad! 🫶'
+    ];
 
-        GatewayIntentBits.GuildVoiceStates,
+    class TitanBot extends Client {
+      constructor() {
+        super({
+          intents: [
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildMembers,
 
-        GatewayIntentBits.GuildBans,
-      ],
-    });
+            GatewayIntentBits.GuildMessages,
+            GatewayIntentBits.GuildMessageReactions,
+            GatewayIntentBits.MessageContent,
+            GatewayIntentBits.DirectMessages,
 
-    this.config = config;
-    this.commands = new Collection();
-    this.events = new Collection();
-    this.buttons = new Collection();
-    this.selectMenus = new Collection();
-    this.modals = new Collection();
-    this.cooldowns = new Collection();
-    this.db = null;
+            GatewayIntentBits.GuildVoiceStates,
 
-    this.rest = new REST({
-      version: '10'
-    }).setToken(config.bot.token);
-  }
+            GatewayIntentBits.GuildBans,
+          ],
+        });
 
-  async start() {
-    try {
-      startupLog('Starting TitanBot...');
+        this.config = config;
+        this.commands = new Collection();
+        this.events = new Collection();
+        this.buttons = new Collection();
+        this.selectMenus = new Collection();
+        this.modals = new Collection();
+        this.cooldowns = new Collection();
+        this.db = null;
 
-      await new Promise(resolve =>
-        setTimeout(resolve, 1000)
-      );
-
-      startupLog('Initializing database...');
-
-      const dbInstance =
-        await initializeDatabase();
-
-      this.db = dbInstance.db;
-
-      // Check database status and report
-      const dbStatus =
-        this.db.getStatus();
-
-      if (dbStatus.isDegraded) {
-        logger.warn('');
-        logger.warn(
-          '╔═══════════════════════════════════════════════════════╗'
-        );
-        logger.warn(
-          '║ ⚠️  DATABASE RUNNING IN DEGRADED MODE                 ║'
-        );
-        logger.warn(
-          '║                                                       ║'
-        );
-        logger.warn(
-          '║ Connection: In-Memory Storage (PostgreSQL unavailable)║'
-        );
-        logger.warn(
-          '║ Data Persistence: DISABLED - data lost on restart    ║'
-        );
-        logger.warn(
-          '║ Action Required: Fix PostgreSQL and restart bot      ║'
-        );
-        logger.warn(
-          '╚═══════════════════════════════════════════════════════╝'
-        );
-        logger.warn('');
-      } else {
-        startupLog(
-          `✅ Database Status: ${dbStatus.connectionType} (fully operational)`
-        );
+        this.rest = new REST({
+          version: '10'
+        }).setToken(config.bot.token);
       }
 
-      startupLog('Starting web server...');
-      this.startWebServer();
+      async start() {
+        try {
+          startupLog('Starting TitanBot...');
 
-      startupLog('Loading commands...');
-      await loadCommands(this);
-
-      startupLog(
-        `Commands loaded: ${this.commands.size}`
-      );
-
-      startupLog('Loading handlers...');
-      await this.loadHandlers();
-
-      startupLog('Handlers loaded');
-
-      initializeMusic(this);
-
-      startupLog('Logging into Discord...');
-
-      await this.login(
-        this.config.bot.token
-      );
-
-      startupLog(
-        'Discord login successful'
-      );
-
-      startupLog(
-        'Registering slash commands globally...'
-      );
-
-      await this.registerCommands();
-
-      startupLog(
-        'Slash commands registration complete'
-      );
-
-      const databaseMode =
-        dbStatus.isDegraded
-          ? 'Optional in-memory mode (data resets after restart)'
-          : 'Connected (persistent data enabled)';
-
-      const handlerSummary =
-        `${this.buttons.size} buttons, ` +
-        `${this.selectMenus.size} menus, ` +
-        `${this.modals.size} modals`;
-
-      startupLog(
-        `ONLINE ✅ | ${this.commands.size} commands loaded | ${handlerSummary} | Database: ${databaseMode}`
-      );
-
-      this.setupCronJobs();
-
-    } catch (error) {
-      logger.error(
-        'Failed to start bot:',
-        error
-      );
-
-      process.exit(1);
-    }
-  }
-
-  startWebServer() {
-    const app = express();
-
-    const configuredPort =
-      Number(
-        this.config.api?.port ||
-        process.env.PORT ||
-        3000
-      );
-
-    const maxPortRetryAttempts =
-      Number(
-        process.env.PORT_RETRY_ATTEMPTS ||
-        5
-      );
-
-    const host =
-      process.env.WEB_HOST ||
-      '0.0.0.0';
-
-    const corsOrigin =
-      this.config.api?.cors?.origin ||
-      '*';
-
-    app.use((req, res, next) => {
-      const allowedOrigins =
-        Array.isArray(corsOrigin)
-          ? corsOrigin
-          : [corsOrigin];
-
-      const origin =
-        req.headers.origin;
-
-      if (
-        allowedOrigins.includes('*') ||
-        allowedOrigins.includes(origin)
-      ) {
-        res.header(
-          'Access-Control-Allow-Origin',
-          origin || '*'
-        );
-      }
-
-      res.header(
-        'Access-Control-Allow-Methods',
-        'GET, POST, OPTIONS'
-      );
-
-      res.header(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Authorization'
-      );
-
-      if (
-        req.method === 'OPTIONS'
-      ) {
-        return res.sendStatus(200);
-      }
-
-      next();
-    });
-
-    const requestCounts =
-      new Map();
-
-    const windowMs =
-      this.config.api?.rateLimit?.windowMs ||
-      60000;
-
-    const maxRequests =
-      this.config.api?.rateLimit?.max ||
-      100;
-
-    app.use((req, res, next) => {
-      const ip = req.ip;
-      const now = Date.now();
-      const windowStart =
-        now - windowMs;
-
-      if (
-        !requestCounts.has(ip)
-      ) {
-        requestCounts.set(
-          ip,
-          []
-        );
-      }
-
-      const times =
-        requestCounts
-          .get(ip)
-          .filter(
-            t => t > windowStart
+          await new Promise(resolve =>
+            setTimeout(resolve, 1000)
           );
 
-      if (
-        times.length >=
-        maxRequests
-      ) {
-        return res
-          .status(429)
-          .json({
-            error:
-              'Too many requests'
-          });
-      }
+          startupLog('Initializing database...');
 
-      times.push(now);
+          const dbInstance =
+            await initializeDatabase();
 
-      requestCounts.set(
-        ip,
-        times
-      );
+          this.db = dbInstance.db;
 
-      next();
-    });
+          // Check database status and report
+          const dbStatus =
+            this.db.getStatus();
 
-    app.get(
-      '/health',
-      (req, res) => {
-        const dbStatus =
-          this.db?.getStatus?.() ||
-          {
-            isDegraded:
-              'unknown'
-          };
-
-        const status = {
-          status: 'healthy',
-          timestamp:
-            new Date().toISOString(),
-          uptime:
-            process.uptime(),
-          database: {
-            connected:
-              dbStatus.connectionType !==
-              'none',
-            degraded:
-              dbStatus.isDegraded,
-            type:
-              dbStatus.connectionType
+          if (dbStatus.isDegraded) {
+            logger.warn('');
+            logger.warn(
+              '╔═══════════════════════════════════════════════════════╗'
+            );
+            logger.warn(
+              '║ ⚠️  DATABASE RUNNING IN DEGRADED MODE                 ║'
+            );
+            logger.warn(
+              '║                                                       ║'
+            );
+            logger.warn(
+              '║ Connection: In-Memory Storage (PostgreSQL unavailable)║'
+            );
+            logger.warn(
+              '║ Data Persistence: DISABLED - data lost on restart    ║'
+            );
+            logger.warn(
+              '║ Action Required: Fix PostgreSQL and restart bot      ║'
+            );
+            logger.warn(
+              '╚═══════════════════════════════════════════════════════╝'
+            );
+            logger.warn('');
+          } else {
+            startupLog(
+              `✅ Database Status: ${dbStatus.connectionType} (fully operational)`
+            );
           }
-        };
 
-        res
-          .status(200)
-          .json(status);
-      }
-    );
+          startupLog('Starting web server...');
+          this.startWebServer();
 
-    app.get(
-      '/ready',
-      (req, res) => {
-        const dbStatus =
-          this.db?.getStatus?.() ||
-          {
-            isDegraded: true,
-            connectionType: 'none'
-          };
+          startupLog('Loading commands...');
+          await loadCommands(this);
 
-        const isReady =
-          this.isReady() &&
-          !dbStatus.isDegraded;
-
-        const metrics = {
-          guildCount:
-            this.guilds?.cache?.size ??
-            0,
-
-          commandCount:
-            this.commands?.size ??
-            0,
-
-          database: {
-            mode:
-              dbStatus.connectionType,
-
-            degraded:
-              dbStatus.isDegraded,
-
-            degradedReason:
-              dbStatus.degradedReason ??
-              null
-          },
-
-          schemaVersion:
-            EXPECTED_SCHEMA_VERSION,
-
-          schemaLabel:
-            EXPECTED_SCHEMA_LABEL
-        };
-
-        if (isReady) {
-          return res
-            .status(200)
-            .json({
-              ready: true,
-              message:
-                'Bot is ready',
-              metrics
-            });
-        }
-
-        res
-          .status(503)
-          .json({
-            ready: false,
-
-            reason:
-              !this.isReady()
-                ? 'Bot not Ready'
-                : 'Database degraded',
-
-            metrics
-          });
-      }
-    );
-
-    app.get(
-      '/',
-      (req, res) => {
-        res
-          .status(200)
-          .json({
-            message:
-              'TitanBot System Online',
-
-            version:
-              pkg.version,
-
-            timestamp:
-              new Date()
-                .toISOString()
-          });
-      }
-    );
-
-    const startServer =
-      (port, attempt = 0) => {
-
-        let hasStartedListening =
-          false;
-
-        const server =
-          app.listen(
-            port,
-            host,
-            () => {
-              hasStartedListening =
-                true;
-
-              this.webServer =
-                server;
-
-              startupLog(
-                `✅ Web Server running on ${host}:${port}`
-              );
-
-              startupLog(
-                `Health endpoint: http://${host}:${port}/health`
-              );
-
-              startupLog(
-                `Ready endpoint: http://${host}:${port}/ready`
-              );
-            }
+          startupLog(
+            `Commands loaded: ${this.commands.size}`
           );
 
-        server.on(
-          'error',
-          error => {
-            const errorCode =
-              error?.code ||
-              'UNKNOWN_ERROR';
+          startupLog('Loading handlers...');
+          await this.loadHandlers();
 
-            const errorMessage =
-              error?.message ||
-              'Unknown server error';
+          startupLog('Handlers loaded');
 
-            if (
-              !hasStartedListening &&
-              errorCode ===
-                'EADDRINUSE' &&
-              attempt <
-                maxPortRetryAttempts
-            ) {
-              const nextPort =
-                port + 1;
+          initializeMusic(this);
 
-              startupLog(
-                `Port ${port} is already in use. Trying port ${nextPort}...`
+          startupLog('Logging into Discord...');
+
+          await this.login(
+            this.config.bot.token
+          );
+
+          startupLog(
+            'Discord login successful'
+          );
+
+          startupLog(
+            'Registering slash commands globally...'
+          );
+
+          await this.registerCommands();
+
+          startupLog(
+            'Slash commands registration complete'
+          );
+
+          const databaseMode =
+            dbStatus.isDegraded
+              ? 'Optional in-memory mode (data resets after restart)'
+              : 'Connected (persistent data enabled)';
+
+          const handlerSummary =
+            `${this.buttons.size} buttons, ` +
+            `${this.selectMenus.size} menus, ` +
+            `${this.modals.size} modals`;
+
+          startupLog(
+            `ONLINE ✅ | ${this.commands.size} commands loaded | ${handlerSummary} | Database: ${databaseMode}`
+          );
+
+          this.setupCronJobs();
+
+        } catch (error) {
+          logger.error(
+            'Failed to start bot:',
+            error
+          );
+
+          process.exit(1);
+        }
+      }
+
+      startWebServer() {
+        const app = express();
+
+        const configuredPort =
+          Number(
+            this.config.api?.port ||
+            process.env.PORT ||
+            3000
+          );
+
+        const maxPortRetryAttempts =
+          Number(
+            process.env.PORT_RETRY_ATTEMPTS ||
+            5
+          );
+
+        const host =
+          process.env.WEB_HOST ||
+          '0.0.0.0';
+
+        const corsOrigin =
+          this.config.api?.cors?.origin ||
+          '*';
+
+        app.use((req, res, next) => {
+          const allowedOrigins =
+            Array.isArray(corsOrigin)
+              ? corsOrigin
+              : [corsOrigin];
+
+          const origin =
+            req.headers.origin;
+
+          if (
+            allowedOrigins.includes('*') ||
+            allowedOrigins.includes(origin)
+          ) {
+            res.header(
+              'Access-Control-Allow-Origin',
+              origin || '*'
+            );
+          }
+
+          res.header(
+            'Access-Control-Allow-Methods',
+            'GET, POST, OPTIONS'
+          );
+
+          res.header(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Authorization'
+          );
+
+          if (
+            req.method === 'OPTIONS'
+          ) {
+            return res.sendStatus(200);
+          }
+
+          next();
+        });
+
+        const requestCounts =
+          new Map();
+
+        const windowMs =
+          this.config.api?.rateLimit?.windowMs ||
+          60000;
+
+        const maxRequests =
+          this.config.api?.rateLimit?.max ||
+          100;
+
+        app.use((req, res, next) => {
+          const ip = req.ip;
+          const now = Date.now();
+          const windowStart =
+            now - windowMs;
+
+          if (
+            !requestCounts.has(ip)
+          ) {
+            requestCounts.set(
+              ip,
+              []
+            );
+          }
+
+          const times =
+            requestCounts
+              .get(ip)
+              .filter(
+                t => t > windowStart
               );
 
-              setTimeout(
-                () =>
-                  startServer(
-                    nextPort,
-                    attempt + 1
-                  ),
-                250
-              );
+          if (
+            times.length >=
+            maxRequests
+          ) {
+            return res
+              .status(429)
+              .json({
+                error:
+                  'Too many requests'
+              });
+          }
 
-              return;
+          times.push(now);
+
+          requestCounts.set(
+            ip,
+            times
+          );
+
+          next();
+        });
+
+        app.get(
+          '/health',
+          (req, res) => {
+            const dbStatus =
+              this.db?.getStatus?.() ||
+              {
+                isDegraded:
+                  'unknown'
+              };
+
+            const status = {
+              status: 'healthy',
+              timestamp:
+                new Date().toISOString(),
+              uptime:
+                process.uptime(),
+              database: {
+                connected:
+                  dbStatus.connectionType !==
+                  'none',
+                degraded:
+                  dbStatus.isDegraded,
+                type:
+                  dbStatus.connectionType
+              }
+            };
+
+            res
+              .status(200)
+              .json(status);
+          }
+        );
+
+        app.get(
+          '/ready',
+          (req, res) => {
+            const dbStatus =
+              this.db?.getStatus?.() ||
+              {
+                isDegraded: true,
+                connectionType: 'none'
+              };
+
+            const isReady =
+              this.isReady() &&
+              !dbStatus.isDegraded;
+
+            const metrics = {
+              guildCount:
+                this.guilds?.cache?.size ??
+                0,
+
+              commandCount:
+                this.commands?.size ??
+                0,
+
+              database: {
+                mode:
+                  dbStatus.connectionType,
+
+                degraded:
+                  dbStatus.isDegraded,
+
+                degradedReason:
+                  dbStatus.degradedReason ??
+                  null
+              },
+
+              schemaVersion:
+                EXPECTED_SCHEMA_VERSION,
+
+              schemaLabel:
+                EXPECTED_SCHEMA_LABEL
+            };
+
+            if (isReady) {
+              return res
+                .status(200)
+                .json({
+                  ready: true,
+                  message:
+                    'Bot is ready',
+                  metrics
+                });
             }
 
-            if (
-              hasStartedListening &&
-              errorCode ===
-                'EADDRINUSE'
-            ) {
-              logger.warn(
-                `Web server reported a duplicate bind warning on ${host}:${port}, but the bot remains online.`
+            res
+              .status(503)
+              .json({
+                ready: false,
+
+                reason:
+                  !this.isReady()
+                    ? 'Bot not Ready'
+                    : 'Database degraded',
+
+                metrics
+              });
+          }
+        );
+
+        app.get(
+          '/',
+          (req, res) => {
+            res
+              .status(200)
+              .json({
+                message:
+                  'TitanBot System Online',
+
+                version:
+                  pkg.version,
+
+                timestamp:
+                  new Date()
+                    .toISOString()
+              });
+          }
+        );
+
+        const startServer =
+          (port, attempt = 0) => {
+
+            let hasStartedListening =
+              false;
+
+            const server =
+              app.listen(
+                port,
+                host,
+                () => {
+                  hasStartedListening =
+                    true;
+
+                  this.webServer =
+                    server;
+
+                  startupLog(
+                    `✅ Web Server running on ${host}:${port}`
+                  );
+
+                  startupLog(
+                    `Health endpoint: http://${host}:${port}/health`
+                  );
+
+                  startupLog(
+                    `Ready endpoint: http://${host}:${port}/ready`
+                  );
+                }
               );
 
-              return;
-            }
+            server.on(
+              'error',
+              error => {
+                const errorCode =
+                  error?.code ||
+                  'UNKNOWN_ERROR';
 
-            logger.error(
-              `❌ Web server error on port ${port} (${errorCode}): ${errorMessage}`
+                const errorMessage =
+                  error?.message ||
+                  'Unknown server error';
+
+                if (
+                  !hasStartedListening &&
+                  errorCode ===
+                    'EADDRINUSE' &&
+                  attempt <
+                    maxPortRetryAttempts
+                ) {
+                  const nextPort =
+                    port + 1;
+
+                  startupLog(
+                    `Port ${port} is already in use. Trying port ${nextPort}...`
+                  );
+
+                  setTimeout(
+                    () =>
+                      startServer(
+                        nextPort,
+                        attempt + 1
+                      ),
+                    250
+                  );
+
+                  return;
+                }
+
+                if (
+                  hasStartedListening &&
+                  errorCode ===
+                    'EADDRINUSE'
+                ) {
+                  logger.warn(
+                    `Web server reported a duplicate bind warning on ${host}:${port}, but the bot remains online.`
+                  );
+
+                  return;
+                }
+
+                logger.error(
+                  `❌ Web server error on port ${port} (${errorCode}): ${errorMessage}`
+                );
+
+                if (
+                  !hasStartedListening
+                ) {
+                  process.exit(1);
+                }
+              }
+            );
+          };
+
+        startServer(
+          configuredPort,
+          0
+        );
+      }
+
+      // =========================================================
+      // SCHEDULED TASKS
+      // =========================================================
+
+      setupCronJobs() {
+        // Daily birthday check
+        cron.schedule(
+          '0 6 * * *',
+          runSafeTask(
+            'birthday_check',
+            () =>
+              checkBirthdays(this)
+          )
+        );
+
+        // Giveaway check
+        cron.schedule(
+          '* * * * *',
+          runSafeTask(
+            'giveaway_check',
+            () =>
+              checkGiveaways(this)
+          )
+        );
+
+        // Server counter refresh
+        cron.schedule(
+          '*/15 * * * *',
+          runSafeTask(
+            'counter_update',
+            () =>
+              this.updateAllCounters()
+          )
+        );
+
+        // MainSquad weekly community reminder
+        // Iedere donderdag om 09:00 Belgische tijd
+        cron.schedule(
+          '0 9 * * 4',
+          runSafeTask(
+            'weekly_community_reminder',
+            () =>
+              this.sendWeeklyCommunityReminder()
+          ),
+          {
+            timezone:
+              'Europe/Brussels'
+          }
+        );
+
+        // Iedere ochtend om 06:00 Belgische tijd
+        cron.schedule(
+          '0 6 * * *',
+          runSafeTask(
+            'daily_good_morning',
+            () =>
+              this.sendRandomCommunityMessage(
+                GOOD_MORNING_MESSAGES,
+                'community:last_good_morning'
+              )
+          ),
+          {
+            timezone:
+              'Europe/Brussels'
+          }
+        );
+
+        // Iedere avond om 21:00 Belgische tijd
+        cron.schedule(
+          '0 21 * * *',
+          runSafeTask(
+            'daily_good_night',
+            () =>
+              this.sendRandomCommunityMessage(
+                GOOD_NIGHT_MESSAGES,
+                'community:last_good_night'
+              )
+          ),
+          {
+            timezone:
+              'Europe/Brussels'
+          }
+        );
+
+        startupLog(
+          '✅ Scheduled jobs registered'
+        );
+
+        startupLog(
+          '☀️ Daily MainSquad good morning: 06:00 Europe/Brussels'
+        );
+
+        startupLog(
+          '💗 Weekly MainSquad reminder: Thursday 09:00 Europe/Brussels'
+        );
+
+        startupLog(
+          '🌙 Daily MainSquad good night: 21:00 Europe/Brussels'
+        );
+      }
+
+      // =========================================================
+      // WEEKLY MAINSQUAD REMINDER
+      // =========================================================
+
+      async sendWeeklyCommunityReminder() {
+        try {
+          const channel =
+            await this.channels
+              .fetch(
+                WEEKLY_REMINDER_CHANNEL_ID
+              )
+              .catch(
+                () => null
+              );
+
+          if (
+            !channel ||
+            !channel.isTextBased()
+          ) {
+            logger.warn(
+              `Weekly reminder channel ${WEEKLY_REMINDER_CHANNEL_ID} not found or is not text based`
             );
 
-            if (
-              !hasStartedListening
-            ) {
-              process.exit(1);
-            }
+            return;
           }
-        );
-      };
 
-    startServer(
-      configuredPort,
-      0
-    );
-  }
+          const birthdayButton =
+            new ButtonBuilder()
+              .setCustomId(
+                'welcome_birthday'
+              )
+              .setLabel(
+                'Verjaardag toevoegen'
+              )
+              .setEmoji('🎂')
+              .setStyle(
+                ButtonStyle.Primary
+              );
 
-  // =========================================================
-  // SCHEDULED TASKS
-  // =========================================================
+          const twitchButton =
+            new ButtonBuilder()
+              .setCustomId(
+                'welcome_twitch'
+              )
+              .setLabel(
+                'Twitch koppelen'
+              )
+              .setEmoji('💜')
+              .setStyle(
+                ButtonStyle.Primary
+              );
 
-  setupCronJobs() {
-    // Daily birthday check
-    cron.schedule(
-      '0 6 * * *',
-      runSafeTask(
-        'birthday_check',
-        () =>
-          checkBirthdays(this)
-      )
-    );
+          const buttons =
+            new ActionRowBuilder()
+              .addComponents(
+                birthdayButton,
+                twitchButton
+              );
 
-    // Giveaway check
-    cron.schedule(
-      '* * * * *',
-      runSafeTask(
-        'giveaway_check',
-        () =>
-          checkGiveaways(this)
-      )
-    );
+          await channel.send({
+            content:
+              '@everyone 💗 **Kleine MainSquad reminder!**\n\n' +
 
-    // Server counter refresh
-    cron.schedule(
-      '*/15 * * * *',
-      runSafeTask(
-        'counter_update',
-        () =>
-          this.updateAllCounters()
-      )
-    );
+              '🎥 Stream je zelf? Vergeet dan niet je **Twitch te koppelen**! ' +
+              'We zijn superbenieuwd naar jullie streams en vinden het leuk om te ontdekken wat jullie zelf spelen & maken. 👀💜\n\n' +
 
-    // MainSquad weekly community reminder
-    // Iedere donderdag om 09:00 Belgische tijd
-    cron.schedule(
-      '0 9 * * 4',
-      runSafeTask(
-        'weekly_community_reminder',
-        () =>
-          this.sendWeeklyCommunityReminder()
-      ),
-      {
-        timezone:
-          'Europe/Brussels'
-      }
-    );
+              '🎂 En voeg meteen even je **verjaardag** toe, zodat we je natuurlijk niet zomaar laten wegkomen zonder een felicitatie. 😂💗\n\n' +
 
-    startupLog(
-      '✅ Scheduled jobs registered'
-    );
+              'Je regelt het heel makkelijk via de knopjes hieronder. ✨',
 
-    startupLog(
-      '💗 Weekly MainSquad reminder: Thursday 09:00 Europe/Brussels'
-    );
-  }
+            components: [
+              buttons
+            ],
 
-  // =========================================================
-  // WEEKLY MAINSQUAD REMINDER
-  // =========================================================
+            allowedMentions: {
+              parse: [
+                'everyone'
+              ]
+            }
+          });
 
-  async sendWeeklyCommunityReminder() {
-    try {
-      const channel =
-        await this.channels
-          .fetch(
-            WEEKLY_REMINDER_CHANNEL_ID
-          )
-          .catch(
-            () => null
+          logger.info(
+            `✅ Weekly MainSquad reminder sent to channel ${WEEKLY_REMINDER_CHANNEL_ID}`
           );
 
-      if (
-        !channel ||
-        !channel.isTextBased()
-      ) {
-        logger.warn(
-          `Weekly reminder channel ${WEEKLY_REMINDER_CHANNEL_ID} not found or is not text based`
-        );
-
-        return;
-      }
-
-      const birthdayButton =
-        new ButtonBuilder()
-          .setCustomId(
-            'welcome_birthday'
-          )
-          .setLabel(
-            'Verjaardag toevoegen'
-          )
-          .setEmoji('🎂')
-          .setStyle(
-            ButtonStyle.Primary
+        } catch (error) {
+          logger.error(
+            'Failed to send weekly MainSquad reminder:',
+            error
           );
-
-      const twitchButton =
-        new ButtonBuilder()
-          .setCustomId(
-            'welcome_twitch'
-          )
-          .setLabel(
-            'Twitch koppelen'
-          )
-          .setEmoji('💜')
-          .setStyle(
-            ButtonStyle.Primary
-          );
-
-      const buttons =
-        new ActionRowBuilder()
-          .addComponents(
-            birthdayButton,
-            twitchButton
-          );
-
-      await channel.send({
-        content:
-          '@everyone 💗 **Kleine MainSquad reminder!**\n\n' +
-
-          '🎥 Stream je zelf? Vergeet dan niet je **Twitch te koppelen**! ' +
-          'We zijn superbenieuwd naar jullie streams en vinden het leuk om te ontdekken wat jullie zelf spelen & maken. 👀💜\n\n' +
-
-          '🎂 En voeg meteen even je **verjaardag** toe, zodat we je natuurlijk niet zomaar laten wegkomen zonder een felicitatie. 😂💗\n\n' +
-
-          'Je regelt het heel makkelijk via de knopjes hieronder. ✨',
-
-        components: [
-          buttons
-        ],
-
-        allowedMentions: {
-          parse: [
-            'everyone'
-          ]
         }
-      });
+      }
 
-      logger.info(
-        `✅ Weekly MainSquad reminder sent to channel ${WEEKLY_REMINDER_CHANNEL_ID}`
-      );
+      // =========================================================
+      // DAILY COMMUNITY MESSAGES
+      // =========================================================
 
-    } catch (error) {
-      logger.error(
-        'Failed to send weekly MainSquad reminder:',
-        error
-      );
-    }
-  }
+      async sendRandomCommunityMessage(messages, databaseKey) {
+        try {
+          const channel =
+            await this.channels
+              .fetch(
+                COMMUNITY_CHAT_CHANNEL_ID
+              )
+              .catch(
+                () => null
+              );
 
-  // =========================================================
-  // SERVER COUNTERS
-  // =========================================================
+          if (
+            !channel ||
+            !channel.isTextBased()
+          ) {
+            logger.warn(
+              `Community chat channel ${COMMUNITY_CHAT_CHANNEL_ID} not found or is not text based`
+            );
+            return;
+          }
 
-  async updateAllCounters() {
-    if (!this.db) {
-      logger.warn(
-        'Database not available for counter updates'
-      );
+          if (
+            !Array.isArray(messages) ||
+            messages.length === 0
+          ) {
+            logger.warn(
+              'No community messages configured'
+            );
+            return;
+          }
 
-      return;
-    }
+          let previousIndex = null;
 
-    for (
-      const [guildId, guild]
-      of this.guilds.cache
-    ) {
-      try {
-        const counters =
-          await getServerCounters(
-            this,
-            guildId
+          try {
+            previousIndex =
+              await this.db.get(
+                databaseKey
+              );
+          } catch (error) {
+            logger.warn(
+              `Could not read previous community message index for ${databaseKey}`
+            );
+          }
+
+          let index;
+
+          do {
+            index =
+              Math.floor(
+                Math.random() *
+                messages.length
+              );
+          } while (
+            messages.length > 1 &&
+            Number(previousIndex) ===
+              index
           );
 
-        const validCounters = [];
-        const orphanedCounters = [];
+          await channel.send({
+            content:
+              messages[index]
+          });
+
+          try {
+            await this.db.set(
+              databaseKey,
+              index
+            );
+          } catch (error) {
+            logger.warn(
+              `Could not save community message index for ${databaseKey}`
+            );
+          }
+
+          logger.info(
+            `✅ Scheduled community message sent to channel ${COMMUNITY_CHAT_CHANNEL_ID}`
+          );
+
+        } catch (error) {
+          logger.error(
+            'Failed to send scheduled community message:',
+            error
+          );
+        }
+      }
+
+      // =========================================================
+      // SERVER COUNTERS
+      // =========================================================
+
+      async updateAllCounters() {
+        if (!this.db) {
+          logger.warn(
+            'Database not available for counter updates'
+          );
+
+          return;
+        }
 
         for (
-          const counter
-          of counters
+          const [guildId, guild]
+          of this.guilds.cache
         ) {
-          if (
-            counter &&
-            counter.type &&
-            counter.channelId &&
-            counter.enabled !==
-              false
-          ) {
-            const channel =
-              guild.channels.cache.get(
-                counter.channelId
-              );
-
-            if (channel) {
-              validCounters.push(
-                counter
-              );
-
-              await updateCounter(
+          try {
+            const counters =
+              await getServerCounters(
                 this,
-                guild,
-                counter
+                guildId
               );
-            } else {
-              orphanedCounters.push(
-                counter
+
+            const validCounters = [];
+            const orphanedCounters = [];
+
+            for (
+              const counter
+              of counters
+            ) {
+              if (
+                counter &&
+                counter.type &&
+                counter.channelId &&
+                counter.enabled !==
+                  false
+              ) {
+                const channel =
+                  guild.channels.cache.get(
+                    counter.channelId
+                  );
+
+                if (channel) {
+                  validCounters.push(
+                    counter
+                  );
+
+                  await updateCounter(
+                    this,
+                    guild,
+                    counter
+                  );
+                } else {
+                  orphanedCounters.push(
+                    counter
+                  );
+
+                  logger.info(
+                    `Removing orphaned counter ${counter.id} (type: ${counter.type}, deleted channel: ${counter.channelId}) from guild ${guildId}`
+                  );
+                }
+              }
+            }
+
+            if (
+              orphanedCounters.length >
+              0
+            ) {
+              await saveServerCounters(
+                this,
+                guildId,
+                validCounters
               );
 
               logger.info(
-                `Removing orphaned counter ${counter.id} (type: ${counter.type}, deleted channel: ${counter.channelId}) from guild ${guildId}`
+                `Cleaned up ${orphanedCounters.length} orphaned counter(s) from guild ${guildId} during scheduled update`
+              );
+            }
+
+          } catch (error) {
+            logger.error(
+              `Error updating counters for guild ${guildId}:`,
+              error
+            );
+          }
+        }
+      }
+
+      async loadHandlers() {
+        startupLog(
+          'Loading handlers...'
+        );
+
+        const handlers = [
+          {
+            path: 'events',
+            type: 'default',
+            required: true
+          },
+          {
+            path: 'interactions',
+            type: 'default',
+            required: true
+          }
+        ];
+
+        for (
+          const handler
+          of handlers
+        ) {
+          try {
+            startupLog(
+              `Loading handler: ${handler.path}`
+            );
+
+            const module =
+              await import(
+                `./handlers/loaders/${handler.path}.js`
+              );
+
+            const loaderFn =
+              handler.type.startsWith(
+                'named:'
+              )
+                ? module[
+                    handler.type.split(
+                      ':'
+                    )[1]
+                  ]
+                : module.default;
+
+            if (
+              typeof loaderFn ===
+              'function'
+            ) {
+              await loaderFn(this);
+
+              startupLog(
+                `✅ Loaded ${handler.path}`
+              );
+            } else {
+              throw new Error(
+                `Invalid loader export from ${handler.path}`
+              );
+            }
+
+          } catch (error) {
+            if (handler.required) {
+              logger.error(
+                `❌ Failed to load required handler ${handler.path}:`,
+                error.message
+              );
+
+              throw error;
+            } else if (
+              error.code !==
+              'MODULE_NOT_FOUND'
+            ) {
+              logger.warn(
+                `⚠️ Failed to load optional handler ${handler.path}:`,
+                error.message
               );
             }
           }
         }
+      }
 
-        if (
-          orphanedCounters.length >
-          0
-        ) {
-          await saveServerCounters(
+      async registerCommands() {
+        try {
+          await registerSlashCommands(
             this,
-            guildId,
-            validCounters
+            {
+              clientId:
+                this.config.bot.clientId
+            }
           );
 
-          logger.info(
-            `Cleaned up ${orphanedCounters.length} orphaned counter(s) from guild ${guildId} during scheduled update`
-          );
-        }
-
-      } catch (error) {
-        logger.error(
-          `Error updating counters for guild ${guildId}:`,
-          error
-        );
-      }
-    }
-  }
-
-  async loadHandlers() {
-    startupLog(
-      'Loading handlers...'
-    );
-
-    const handlers = [
-      {
-        path: 'events',
-        type: 'default',
-        required: true
-      },
-      {
-        path: 'interactions',
-        type: 'default',
-        required: true
-      }
-    ];
-
-    for (
-      const handler
-      of handlers
-    ) {
-      try {
-        startupLog(
-          `Loading handler: ${handler.path}`
-        );
-
-        const module =
-          await import(
-            `./handlers/loaders/${handler.path}.js`
-          );
-
-        const loaderFn =
-          handler.type.startsWith(
-            'named:'
-          )
-            ? module[
-                handler.type.split(
-                  ':'
-                )[1]
-              ]
-            : module.default;
-
-        if (
-          typeof loaderFn ===
-          'function'
-        ) {
-          await loaderFn(this);
-
-          startupLog(
-            `✅ Loaded ${handler.path}`
-          );
-        } else {
-          throw new Error(
-            `Invalid loader export from ${handler.path}`
-          );
-        }
-
-      } catch (error) {
-        if (handler.required) {
+        } catch (error) {
           logger.error(
-            `❌ Failed to load required handler ${handler.path}:`,
-            error.message
-          );
-
-          throw error;
-        } else if (
-          error.code !==
-          'MODULE_NOT_FOUND'
-        ) {
-          logger.warn(
-            `⚠️ Failed to load optional handler ${handler.path}:`,
-            error.message
+            'Error registering commands:',
+            error
           );
         }
       }
-    }
-  }
 
-  async registerCommands() {
-    try {
-      await registerSlashCommands(
-        this,
-        {
-          clientId:
-            this.config.bot.clientId
-        }
-      );
-
-    } catch (error) {
-      logger.error(
-        'Error registering commands:',
-        error
-      );
-    }
-  }
-
-  async shutdown(
-    reason = 'UNKNOWN'
-  ) {
-    shutdownLog(
-      `Bot is shutting down (${reason})...`
-    );
-
-    logger.info(
-      `\n${'='.repeat(60)}`
-    );
-
-    logger.info(
-      `🛑 Graceful Shutdown Initiated (${reason})`
-    );
-
-    logger.info(
-      `${'='.repeat(60)}`
-    );
-
-    try {
-      logger.info(
-        'Stopping cron jobs...'
-      );
-
-      cron
-        .getTasks()
-        .forEach(
-          task => task.stop()
-        );
-
-      logger.info(
-        '✅ Cron jobs stopped'
-      );
-
-      logger.info(
-        'Stopping music players...'
-      );
-
-      await shutdownMusic(this);
-
-      logger.info(
-        '✅ Music players stopped'
-      );
-
-      if (this.webServer) {
-        logger.info(
-          'Closing web server...'
-        );
-
-        await new Promise(
-          resolve =>
-            this.webServer.close(
-              resolve
-            )
-        );
-
-        logger.info(
-          '✅ Web server closed'
-        );
-      }
-
-      if (
-        this.db &&
-        this.db.db
+      async shutdown(
+        reason = 'UNKNOWN'
       ) {
+        shutdownLog(
+          `Bot is shutting down (${reason})...`
+        );
+
         logger.info(
-          'Closing database connection...'
+          `\n${'='.repeat(60)}`
+        );
+
+        logger.info(
+          `🛑 Graceful Shutdown Initiated (${reason})`
+        );
+
+        logger.info(
+          `${'='.repeat(60)}`
         );
 
         try {
-          if (
-            this.db.db.pool
-          ) {
-            await this.db.db.pool.end();
+          logger.info(
+            'Stopping cron jobs...'
+          );
+
+          cron
+            .getTasks()
+            .forEach(
+              task => task.stop()
+            );
+
+          logger.info(
+            '✅ Cron jobs stopped'
+          );
+
+          logger.info(
+            'Stopping music players...'
+          );
+
+          await shutdownMusic(this);
+
+          logger.info(
+            '✅ Music players stopped'
+          );
+
+          if (this.webServer) {
+            logger.info(
+              'Closing web server...'
+            );
+
+            await new Promise(
+              resolve =>
+                this.webServer.close(
+                  resolve
+                )
+            );
 
             logger.info(
-              '✅ Database connection closed'
+              '✅ Web server closed'
             );
           }
 
-        } catch (error) {
-          logger.warn(
-            'Error closing database pool:',
-            error.message
-          );
-        }
-      }
+          if (
+            this.db &&
+            this.db.db
+          ) {
+            logger.info(
+              'Closing database connection...'
+            );
 
-      logger.info(
-        'Destroying Discord client...'
-      );
+            try {
+              if (
+                this.db.db.pool
+              ) {
+                await this.db.db.pool.end();
 
-      if (
-        this.isReady()
-      ) {
-        try {
-          this.destroy();
+                logger.info(
+                  '✅ Database connection closed'
+                );
+              }
+
+            } catch (error) {
+              logger.warn(
+                'Error closing database pool:',
+                error.message
+              );
+            }
+          }
 
           logger.info(
-            '✅ Discord client destroyed'
+            'Destroying Discord client...'
           );
+
+          if (
+            this.isReady()
+          ) {
+            try {
+              this.destroy();
+
+              logger.info(
+                '✅ Discord client destroyed'
+              );
+
+            } catch (error) {
+              logger.warn(
+                'Discord client destroy warning (non-critical):',
+                error.message
+              );
+            }
+          }
+
+          logger.info(
+            '✅ Graceful shutdown complete'
+          );
+
+          shutdownLog(
+            'Bot stopped successfully.'
+          );
+
+          process.exit(0);
 
         } catch (error) {
-          logger.warn(
-            'Discord client destroy warning (non-critical):',
-            error.message
+          logger.error(
+            'Error during graceful shutdown:',
+            error
           );
+
+          process.exit(1);
         }
       }
+    }
 
-      logger.info(
-        '✅ Graceful shutdown complete'
+    try {
+      const bot =
+        new TitanBot();
+
+      const setupShutdown =
+        () => {
+
+          process.on(
+            'SIGTERM',
+            () =>
+              bot.shutdown(
+                'SIGTERM'
+              )
+          );
+
+          process.on(
+            'SIGINT',
+            () =>
+              bot.shutdown(
+                'SIGINT'
+              )
+          );
+
+          process.on(
+            'uncaughtException',
+            error => {
+              handleTaskError(
+                'uncaught_exception',
+                error,
+                {
+                  fatal: true
+                }
+              );
+
+              bot.shutdown(
+                'UNCAUGHT_EXCEPTION'
+              );
+            }
+          );
+
+          process.on(
+            'unhandledRejection',
+            reason => {
+
+              const code =
+                reason?.code;
+
+              if (
+                code === 10062 ||
+                code === 40060 ||
+                code === 50027
+              ) {
+                logger.warn(
+                  'Recoverable Discord interaction rejection:',
+                  reason?.message ||
+                  reason
+                );
+
+                return;
+              }
+
+              if (
+                reason?.message?.includes(
+                  'Queue is empty'
+                )
+              ) {
+                return;
+              }
+
+              handleTaskError(
+                'unhandled_rejection',
+                reason instanceof Error
+                  ? reason
+                  : new Error(
+                      String(reason)
+                    ),
+                {
+                  errorCode:
+                    ErrorCodes.UNHANDLED_REJECTION
+                }
+              );
+            }
+          );
+        };
+
+      setupShutdown();
+
+      bot.start().catch(
+        error => {
+          logger.error(
+            'Fatal error during bot startup:',
+            error
+          );
+
+          bot.shutdown(
+            'STARTUP_ERROR'
+          );
+        }
       );
-
-      shutdownLog(
-        'Bot stopped successfully.'
-      );
-
-      process.exit(0);
 
     } catch (error) {
-      logger.error(
-        'Error during graceful shutdown:',
-        error
-      );
-
-      process.exit(1);
-    }
-  }
-}
-
-try {
-  const bot =
-    new TitanBot();
-
-  const setupShutdown =
-    () => {
-
-      process.on(
-        'SIGTERM',
-        () =>
-          bot.shutdown(
-            'SIGTERM'
-          )
-      );
-
-      process.on(
-        'SIGINT',
-        () =>
-          bot.shutdown(
-            'SIGINT'
-          )
-      );
-
-      process.on(
-        'uncaughtException',
-        error => {
-          handleTaskError(
-            'uncaught_exception',
-            error,
-            {
-              fatal: true
-            }
-          );
-
-          bot.shutdown(
-            'UNCAUGHT_EXCEPTION'
-          );
-        }
-      );
-
-      process.on(
-        'unhandledRejection',
-        reason => {
-
-          const code =
-            reason?.code;
-
-          if (
-            code === 10062 ||
-            code === 40060 ||
-            code === 50027
-          ) {
-            logger.warn(
-              'Recoverable Discord interaction rejection:',
-              reason?.message ||
-              reason
-            );
-
-            return;
-          }
-
-          if (
-            reason?.message?.includes(
-              'Queue is empty'
-            )
-          ) {
-            return;
-          }
-
-          handleTaskError(
-            'unhandled_rejection',
-            reason instanceof Error
-              ? reason
-              : new Error(
-                  String(reason)
-                ),
-            {
-              errorCode:
-                ErrorCodes.UNHANDLED_REJECTION
-            }
-          );
-        }
-      );
-    };
-
-  setupShutdown();
-
-  bot.start().catch(
-    error => {
       logger.error(
         'Fatal error during bot startup:',
         error
       );
 
-      bot.shutdown(
-        'STARTUP_ERROR'
-      );
+      process.exit(1);
     }
-  );
 
-} catch (error) {
-  logger.error(
-    'Fatal error during bot startup:',
-    error
-  );
-
-  process.exit(1);
-}
-
-export default TitanBot;
+    export default TitanBot;

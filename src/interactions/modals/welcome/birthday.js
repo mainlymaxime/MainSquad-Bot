@@ -7,6 +7,12 @@ export default {
 
   async execute(interaction, client) {
     try {
+      // Meteen bevestigen aan Discord dat we de modal verwerken.
+      // Zo krijgt de gebruiker geen "Er ging iets fout".
+      await interaction.deferReply({
+        flags: MessageFlags.Ephemeral,
+      });
+
       const day = Number.parseInt(
         interaction.fields.getTextInputValue('birthday_day'),
         10
@@ -25,11 +31,10 @@ export default {
         month < 1 ||
         month > 12
       ) {
-        return await interaction.reply({
+        return await interaction.editReply({
           content:
-            '❌ Vul een geldige verjaardag in. Gebruik alleen cijfers.\n' +
-            'Bijvoorbeeld: **dag 22** en **maand 11**.',
-          flags: MessageFlags.Ephemeral,
+            '❌ Vul een geldige verjaardag in.\n' +
+            'Bijvoorbeeld: **dag 19** en **maand 12**.',
         });
       }
 
@@ -45,34 +50,38 @@ export default {
         .setColor(0xC27080)
         .setTitle('🎂 Verjaardag toegevoegd!')
         .setDescription(
-          `Yay! Je verjaardag staat nu ingesteld op **${result.data.day} ${result.data.monthName}**. 🎉\n\n` +
+          `Yay! Je verjaardag staat nu ingesteld op **${result.data.day} ${result.data.monthName}**! 🎉\n\n` +
           'De MainSquad weet nu wanneer het tijd is voor taart. 🎂💗'
         );
 
-      await interaction.reply({
+      return await interaction.editReply({
+        content: null,
         embeds: [embed],
-        flags: MessageFlags.Ephemeral,
       });
 
     } catch (error) {
-      logger.error('Error saving birthday from welcome modal:', error);
+      logger.error('Error saving birthday from welcome modal:', {
+        error,
+        guildId: interaction.guildId,
+        userId: interaction.user?.id,
+      });
 
-      const errorMessage =
+      const message =
         error?.userMessage ||
         error?.message ||
-        'Dat lukte helaas niet. Probeer het opnieuw.';
+        'Je verjaardag kon niet worden opgeslagen. Probeer het nog eens.';
 
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({
-          content: `❌ ${errorMessage}`,
-          flags: MessageFlags.Ephemeral,
-        }).catch(() => {});
-      } else {
-        await interaction.reply({
-          content: `❌ ${errorMessage}`,
-          flags: MessageFlags.Ephemeral,
+      if (interaction.deferred || interaction.replied) {
+        return await interaction.editReply({
+          content: `❌ ${message}`,
+          embeds: [],
         }).catch(() => {});
       }
+
+      return await interaction.reply({
+        content: `❌ ${message}`,
+        flags: MessageFlags.Ephemeral,
+      }).catch(() => {});
     }
   },
 };

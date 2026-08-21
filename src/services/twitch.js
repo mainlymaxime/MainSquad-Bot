@@ -102,7 +102,7 @@ async function checkMainly(channel) {
 
           image: {
             url:
-            "https://cdn.discordapp.com/attachments/1325895597458325536/1539886333655388221/Ya_gurl_is_live.png?ex=6a87f267&is=6a86a0e7&hm=d951170eda9b95a5d911866b0a78c3e189706b72f189aea52ceb399f3e1fcadd&"
+            "https://cdn.discordapp.com/attachments/1325895597458325536/1539886333655388221/Ya_gurl_is_live.png?ex=6a889b27&is=6a8749a7&hm=5e065cdc0ddec960e1ea9df37183359f7aa4e91018ac54989bbf67d7a1426ec5&"
           },
 
 

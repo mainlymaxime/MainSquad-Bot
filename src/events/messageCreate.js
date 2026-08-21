@@ -66,10 +66,6 @@ export default {
         client
       );
 
-      await handleLeveling(
-        message,
-        client
-      );
 
     } catch (error) {
       logger.error(

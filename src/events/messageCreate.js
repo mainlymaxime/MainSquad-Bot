@@ -1,51 +1,30 @@
-import { Events } from 'discord.js';
-import { logger } from '../utils/logger.js';
-import { getLevelingConfig, getUserLevelData } from '../services/leveling/leveling.js';
-import { addXp } from '../services/leveling/xpSystem.js';
-import { checkRateLimit } from '../utils/rateLimiter.js';
-import { parsePrefixCommand } from '../utils/prefixParser.js';
-import {
-  supportsPrefixExecution,
-  executePrefixCommand,
-  resolvePrefixAccessKey
-} from '../utils/messageAdapter.js';
-import {
-  resolveCommandAlias,
-  resolveSubcommandAlias
-} from '../config/commands/commandAliases.js';
-import { getPrefixRestriction } from '../config/commands/prefixRestrictions.js';
-import { getGuildConfig } from '../services/config/guildConfig.js';
-import {
-  getCommandPrefix,
-  getBotMessage,
-  isBotOwner,
-  isCommandCategoryEnabled,
-  isMaintenanceMode
-} from '../config/bot.js';
-import {
-  enforceAbuseProtection,
-  formatCooldownDuration
-} from '../utils/abuseProtection.js';
-import { createEmbed } from '../utils/embeds.js';
-import { isCommandEnabled } from '../services/commandAccessService.js';
-import {
-  getCountingGameConfig,
-  saveCountingGameConfig,
-  isValidCountingMessage,
-  recordCorrectCount,
-} from '../services/countingGameService.js';
+import { Events } from ‘discord.js’; import { logger } from
+‘../utils/logger.js’; import { getLevelingConfig, getUserLevelData }
+from ‘../services/leveling/leveling.js’; import { addXp } from
+‘../services/leveling/xpSystem.js’; import { checkRateLimit } from
+‘../utils/rateLimiter.js’; import { parsePrefixCommand } from
+‘../utils/prefixParser.js’; import { supportsPrefixExecution,
+executePrefixCommand, resolvePrefixAccessKey } from
+‘../utils/messageAdapter.js’; import { resolveCommandAlias,
+resolveSubcommandAlias } from ‘../config/commands/commandAliases.js’;
+import { getPrefixRestriction } from
+‘../config/commands/prefixRestrictions.js’; import { getGuildConfig }
+from ‘../services/config/guildConfig.js’; import { getCommandPrefix,
+getBotMessage, isBotOwner, isCommandCategoryEnabled, isMaintenanceMode }
+from ‘../config/bot.js’; import { enforceAbuseProtection,
+formatCooldownDuration } from ‘../utils/abuseProtection.js’; import {
+createEmbed } from ‘../utils/embeds.js’; import { isCommandEnabled }
+from ‘../services/commandAccessService.js’; import {
+getCountingGameConfig, saveCountingGameConfig, isValidCountingMessage,
+recordCorrectCount, } from ‘../services/countingGameService.js’;
 
-const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12;
-const MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
+const MESSAGE_XP_RATE_LIMIT_ATTEMPTS = 12; const
+MESSAGE_XP_RATE_LIMIT_WINDOW_MS = 10000;
 
-export default {
-  name: Events.MessageCreate,
+export default { name: Events.MessageCreate,
 
-  async execute(message, client) {
-    try {
-      if (message.author.bot || !message.guild) {
-        return;
-      }
+async execute(message, client) { try { if (message.author.bot ||
+!message.guild) { return; }
 
       logger.debug(
         `Message received from ${message.author.tag}: ${message.content}`
@@ -77,19 +56,11 @@ export default {
         error
       );
     }
-  }
-};
 
-async function handlePrefixCommand(
-  message,
-  client
-) {
-  try {
-    const guildConfig =
-      await getGuildConfig(
-        client,
-        message.guild.id
-      );
+} };
+
+async function handlePrefixCommand( message, client ) { try { const
+guildConfig = await getGuildConfig( client, message.guild.id );
 
     const prefix =
       guildConfig?.prefix ||
@@ -100,7 +71,7 @@ async function handlePrefixCommand(
         message.content,
         prefix
       );
-    
+
     if (!parsed) {
       return;
     }
@@ -326,7 +297,7 @@ async function handlePrefixCommand(
     logger.info(
       `Executing prefix command: ${prefix}${commandName} (resolved to ${resolvedCommandName}) by ${message.author.tag}`
     );
-    
+
     await executePrefixCommand(
       command,
       message,
@@ -336,27 +307,17 @@ async function handlePrefixCommand(
       guildConfig
     );
 
-  } catch (error) {
-    logger.error(
-      'Error handling prefix command:',
-      error
-    );
-  }
-}
+} catch (error) { logger.error( ‘Error handling prefix command:’, error
+); } }
 
+// ========================================================= // COUNTING
+GAME // =========================================================
 
-// =========================================================
-// COUNTING GAME
-// =========================================================
+async function handleCountingGame( message, client ) { try {
+logger.info(
+🧪 MAINSQUAD NEW COUNTING HANDLER | ${message.author.tag} | ${message.content}
+);
 
-async function handleCountingGame(
-  message,
-  client
-) {
-  try {
-    logger.info(
-      `🧪 MAINSQUAD NEW COUNTING HANDLER | ${message.author.tag} | ${message.content}`
-    );
     const config =
       await getCountingGameConfig(
         client,
@@ -366,8 +327,7 @@ async function handleCountingGame(
     if (
       !config.enabled ||
       !config.channelId ||
-      message.channel.id !==
-        config.channelId
+      message.channel.id !== config.channelId
     ) {
       return false;
     }
@@ -389,51 +349,48 @@ async function handleCountingGame(
       !validCount ||
       sameUser;
 
-
     // =====================================================
     // WRONG NUMBER / SAME PERSON TWICE
     // =====================================================
 
     if (invalidAttempt) {
-
-      await message
-        .delete()
-        .catch(() => {});
-
+      // Het foute getal blijft staan.
       await saveCountingGameConfig(
         client,
         message.guild.id,
         {
           ...config,
-
           nextNumber: 1,
-
-          lastUserId:
-            null,
-
-          currentStreak:
-            0,
+          lastUserId: null,
+          currentStreak: 0,
         }
       );
 
-      const failureMessage =
-        await message.channel.send(
-          `<@${message.author.id}> sjongejongejonge.. we beginnen maar weer opnieuw. 😭`
-        );
+      const failureMessages = [
+        `<@${message.author.id}> sjongejongejonge.. we beginnen maar weer opnieuw. 😭`,
+        `<@${message.author.id}> meen je dit? ja nou we beginnen maar weer opnieuw dan.. 😭`,
+        `<@${message.author.id}> really? stop maar.. begin maar helemaal opnieuw. 😭`,
+      ];
 
-      // Na 10 seconden weer verwijderen
-      setTimeout(
-        () => {
-          failureMessage
-            .delete()
-            .catch(() => {});
-        },
-        10000
+      const failureText =
+        failureMessages[
+          Math.floor(
+            Math.random() *
+            failureMessages.length
+          )
+        ];
+
+      // Geen timer: deze melding blijft staan.
+      await message.channel.send(
+        failureText
+      );
+
+      logger.info(
+        `💥 Counting streak broken by ${message.author.tag}. Reset to 1.`
       );
 
       return true;
     }
-
 
     // =====================================================
     // CORRECT NUMBER
@@ -443,7 +400,6 @@ async function handleCountingGame(
       .react('✅')
       .catch(() => {});
 
-
     // =====================================================
     // 69 😏
     // =====================================================
@@ -451,21 +407,10 @@ async function handleCountingGame(
     if (
       config.nextNumber === 69
     ) {
-      const niceMessage =
-        await message.channel.send(
-          `<@${message.author.id}> ayeee 😏`
-        );
-
-      setTimeout(
-        () => {
-          niceMessage
-            .delete()
-            .catch(() => {});
-        },
-        10000
+      await message.channel.send(
+        `<@${message.author.id}> ayeee 😏`
       );
     }
-
 
     // =====================================================
     // SAVE CORRECT COUNT
@@ -477,30 +422,24 @@ async function handleCountingGame(
       message.author.id
     );
 
-    return true;
-
-  } catch (error) {
-    logger.error(
-      'Error handling counting game:',
-      error
+    logger.info(
+      `✅ Correct count ${config.nextNumber} by ${message.author.tag}`
     );
 
+    return true;
+
+} catch (error) { logger.error( ‘Error handling counting game:’, error
+);
+
     return false;
-  }
-}
 
+} }
 
-// =========================================================
-// LEVELING
+// ========================================================= // LEVELING
 // =========================================================
 
-async function handleLeveling(
-  message,
-  client
-) {
-  try {
-    const rateLimitKey =
-      `xp-event:${message.guild.id}:${message.author.id}`;
+async function handleLeveling( message, client ) { try { const
+rateLimitKey = xp-event:${message.guild.id}:${message.author.id};
 
     const canProcess =
       await checkRateLimit(
@@ -518,7 +457,7 @@ async function handleLeveling(
         client,
         message.guild.id
       );
-    
+
     if (
       !levelingConfig?.enabled
     ) {
@@ -682,10 +621,5 @@ async function handleLeveling(
       );
     }
 
-  } catch (error) {
-    logger.error(
-      'Error handling leveling for message:',
-      error
-    );
-  }
-}
+} catch (error) { logger.error( ‘Error handling leveling for message:’,
+error ); } }

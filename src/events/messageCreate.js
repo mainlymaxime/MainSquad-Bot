@@ -354,6 +354,9 @@ async function handleCountingGame(
   client
 ) {
   try {
+    logger.info(
+      `🧪 MAINSQUAD NEW COUNTING HANDLER | ${message.author.tag} | ${message.content}`
+    );
     const config =
       await getCountingGameConfig(
         client,

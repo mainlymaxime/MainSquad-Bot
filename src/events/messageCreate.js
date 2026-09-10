@@ -28,6 +28,7 @@ import {
 } from '../utils/abuseProtection.js';
 import { createEmbed } from '../utils/embeds.js';
 import { isCommandEnabled } from '../services/commandAccessService.js';
+import { Mutex } from '../utils/mutex.js';
 import {
   getCountingGameConfig,
   saveCountingGameConfig,
@@ -354,115 +355,131 @@ async function handleCountingGame(
       `🧪 MAINSQUAD NEW COUNTING HANDLER | ${message.author.tag} | ${message.content}`
     );
 
-    const config =
+    const initialConfig =
       await getCountingGameConfig(
         client,
         message.guild.id
       );
 
     if (
-      !config.enabled ||
-      !config.channelId ||
-      message.channel.id !== config.channelId
+      !initialConfig.enabled ||
+      !initialConfig.channelId ||
+      message.channel.id !== initialConfig.channelId
     ) {
       return false;
     }
 
-    const content =
-      message.content.trim();
+    const lockKey =
+      `counting:${message.guild.id}:${message.channel.id}`;
 
-    const validCount =
-      isValidCountingMessage(
-        content,
-        config
-      );
+    return await Mutex.runExclusive(
+      lockKey,
+      async () => {
+        // Re-read config after obtaining the lock so two near-simultaneous
+        // messages can never validate against the same old nextNumber.
+        const config =
+          await getCountingGameConfig(
+            client,
+            message.guild.id
+          );
 
-    const sameUser =
-      message.author.id ===
-      config.lastUserId;
+        const content =
+          message.content.trim();
 
-    const invalidAttempt =
-      !validCount ||
-      sameUser;
+        const validCount =
+          isValidCountingMessage(
+            content,
+            config
+          );
 
-    // =====================================================
-    // WRONG NUMBER / SAME PERSON TWICE
-    // =====================================================
+        const sameUser =
+          message.author.id ===
+          config.lastUserId;
 
-    if (invalidAttempt) {
-      // Het foute getal blijft staan.
-      await saveCountingGameConfig(
-        client,
-        message.guild.id,
-        {
-          ...config,
-          nextNumber: 1,
-          lastUserId: null,
-          currentStreak: 0,
+        const invalidAttempt =
+          !validCount ||
+          sameUser;
+
+        // =====================================================
+        // WRONG NUMBER / SAME PERSON TWICE
+        // =====================================================
+
+        if (invalidAttempt) {
+          // Het foute getal blijft staan.
+          await saveCountingGameConfig(
+            client,
+            message.guild.id,
+            {
+              ...config,
+              nextNumber: 1,
+              lastUserId: null,
+              currentStreak: 0,
+            }
+          );
+
+          const failureMessages = [
+            `<@${message.author.id}> sjongejongejonge.. we beginnen maar weer opnieuw. 😭`,
+            `<@${message.author.id}> meen je dit? ja nou we beginnen maar weer opnieuw dan.. 😭`,
+            `<@${message.author.id}> really? stop maar.. begin maar helemaal opnieuw. 😭`,
+          ];
+
+          const failureText =
+            failureMessages[
+              Math.floor(
+                Math.random() *
+                failureMessages.length
+              )
+            ];
+
+          // Geen timer: deze melding blijft staan.
+          await message.channel.send(
+            failureText
+          );
+
+          logger.info(
+            `💥 Counting streak broken by ${message.author.tag}. Reset to 1.`
+          );
+
+          return true;
         }
-      );
 
-      const failureMessages = [
-        `<@${message.author.id}> sjongejongejonge.. we beginnen maar weer opnieuw. 😭`,
-        `<@${message.author.id}> meen je dit? ja nou we beginnen maar weer opnieuw dan.. 😭`,
-        `<@${message.author.id}> really? stop maar.. begin maar helemaal opnieuw. 😭`,
-      ];
+        // =====================================================
+        // CORRECT NUMBER
+        // =====================================================
 
-      const failureText =
-        failureMessages[
-          Math.floor(
-            Math.random() *
-            failureMessages.length
-          )
-        ];
+        await message
+          .react('✅')
+          .catch(() => {});
 
-      // Geen timer: deze melding blijft staan.
-      await message.channel.send(
-        failureText
-      );
+        // =====================================================
+        // 69 😏
+        // =====================================================
 
-      logger.info(
-        `💥 Counting streak broken by ${message.author.tag}. Reset to 1.`
-      );
+        if (
+          config.nextNumber === 69
+        ) {
+          await message.channel.send(
+            `<@${message.author.id}> ayeee 😏`
+          );
+        }
 
-      return true;
-    }
+        // =====================================================
+        // SAVE CORRECT COUNT
+        // =====================================================
 
-    // =====================================================
-    // CORRECT NUMBER
-    // =====================================================
+        await recordCorrectCount(
+          client,
+          message.guild.id,
+          message.author.id
+        );
 
-    await message
-      .react('✅')
-      .catch(() => {});
+        logger.info(
+          `✅ Correct count ${config.nextNumber} by ${message.author.tag}`
+        );
 
-    // =====================================================
-    // 69 😏
-    // =====================================================
-
-    if (
-      config.nextNumber === 69
-    ) {
-      await message.channel.send(
-        `<@${message.author.id}> ayeee 😏`
-      );
-    }
-
-    // =====================================================
-    // SAVE CORRECT COUNT
-    // =====================================================
-
-    await recordCorrectCount(
-      client,
-      message.guild.id,
-      message.author.id
+        return true;
+      }
     );
-
-    logger.info(
-      `✅ Correct count ${config.nextNumber} by ${message.author.tag}`
-    );
-
-    return true;
 
   } catch (error) {
     logger.error(
@@ -473,7 +490,6 @@ async function handleCountingGame(
     return false;
   }
 }
-
 
 // =========================================================
 // LEVELING

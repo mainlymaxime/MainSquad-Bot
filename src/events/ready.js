@@ -6,6 +6,8 @@
 
 
 
+
+
 import { Events } from "discord.js";
 import { logger, startupLog } from "../utils/logger.js";
 import config from "../config/application.js";
@@ -15,6 +17,8 @@ import { reconcileLevelRoles } from "../services/leveling/levelRoleSyncService.j
 import { initRiffyAfterReady } from "../services/music/riffySetup.js";
 import { initTwitch } from "../services/twitch.js";
 import { startCardStats } from "../services/cardStatsService.js";
+
+import { importCardHistory } from "../services/cardHistoryService.js";
 
 export default {
   name: Events.ClientReady,
@@ -26,7 +30,7 @@ export default {
       startupLog(`Ready! Logged in as ${client.user.tag}`);
       startupLog(`Serving ${client.guilds.cache.size} guild(s)`);
       startupLog(`Loaded ${client.commands.size} commands`);
-      startCardStats(client).then(() => startupLog('MainSquad Identity tracking ready')).catch(error => logger.error('Identity startup:', error));
+      startCardStats(client).then(async () => { startupLog('MainSquad Identity tracking ready'); await importCardHistory(client); }).catch(error => logger.error('Identity startup:', error));
       initTwitch(client);
       if (client.config?.features?.music) {
         initRiffyAfterReady(client);

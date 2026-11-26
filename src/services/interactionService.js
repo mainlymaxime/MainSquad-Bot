@@ -2,6 +2,7 @@
 
 
 
+
 import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { pgDb } from '../utils/postgresDatabase.js';
 const actions = {
@@ -183,5 +184,5 @@ export async function interactionPrivacy(i) {
 }
 
 
-ja pas maar aan 
+
 

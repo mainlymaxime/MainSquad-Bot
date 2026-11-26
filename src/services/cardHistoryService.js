@@ -1,8 +1,9 @@
 
 
 
+
 import { CARD_CHANNEL_ID, COMMUNITY_CHANNELS, poolFor, recordCardMessage, recordCardReaction } from './cardStatsService.js';
-import { logger } from '../utils/logger.js';
+import { logger, startupLog } from '../utils/logger.js';
 const LOG='1460932149707411457';
 // Conservative cutoff: first ready event, just before tracking-ready log.
 const CUTOFF=Date.parse('2026-11-26T03:53:26Z');
@@ -17,11 +18,11 @@ async function* pages(channel){
  }
 }
 async function once(pool,guild,source,work){
- if((await pool.query('SELECT 1 FROM identity_v3_import WHERE guild_id=$1 AND source=$2',[guild,source])).rowCount)return;
- logger.info(`Identity import starting: ${source}`);
+ if((await pool.query('SELECT 1 FROM identity_v3_import WHERE guild_id=$1 AND source=$2',[guild,source])).rowCount){startupLog(`Identity import already complete: ${source}`);return;}
+ startupLog(`Identity import starting: ${source}`);
  await work();
  await pool.query('INSERT INTO identity_v3_import VALUES($1,$2) ON CONFLICT DO NOTHING',[guild,source]);
- logger.info(`Identity import complete: ${source}`);
+ startupLog(`Identity import complete: ${source}`);
 }
 async function importText(client,channel){
  let scanned=0;
@@ -37,7 +38,7 @@ async function importText(client,channel){
    }
   }
  }
- scanned+=page.length; logger.info(`Identity text ${channel.id}: ${scanned} scanned`);
+ scanned+=page.length; startupLog(`Identity text ${channel.id}: ${scanned} scanned`);
  }
 }
 function parse(m,botId){
@@ -69,14 +70,14 @@ async function importVoice(client,guild,pool,channel){
    if(e.type==='leave'||e.type==='move')pending.set(e.user,{channel:e.channels[0],time:e.time,id:e.id});
    else pending.delete(e.user);
   }
-  scanned+=page.length; logger.info(`Identity voice: ${scanned} scanned, ${matched} matched, ${paired} paired`);
+  scanned+=page.length; startupLog(`Identity voice: ${scanned} scanned, ${matched} matched, ${paired} paired`);
  }
 }
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function runSource(client,guild,pool,id){
  for(let attempt=1;attempt<=5;attempt++){
   try{
-   await once(pool,guild.id,id,async()=>{
+   await once(pool,guild.id,id===LOG?`${LOG}:voice-check-2`:id,async()=>{
     const channel=await guild.channels.fetch(id);
     if(!channel?.messages)throw new Error(`Not a message channel: ${id}`);
     if(!channel.permissionsFor(guild.members.me)?.has(['ViewChannel','ReadMessageHistory']))throw new Error(`Missing history permissions: ${id}`);

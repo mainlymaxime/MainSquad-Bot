@@ -1,8 +1,6 @@
 
 
 
-
-
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { getCardAbility } from './cardAbilityService.js';
@@ -154,7 +152,7 @@ export async function createIdentityCard(client,member) {
   const avatar=await remoteImage(member.displayAvatarURL({extension:'png',size:512,forceStatic:true}));
   ctx.save();ctx.beginPath();ctx.arc(522,316,160,0,Math.PI*2);ctx.clip();
   ctx.drawImage(avatar,362,156,320,320);ctx.restore();
-  text(member.user.username,522,glitter?532:540,53,720,'center','IdentityHiguen');
+  text(member.displayName || member.user.globalName || member.user.username,522,glitter?532:540,53,720,'center','IdentityHiguen');
   const stars=p.level;
   for(let i=0;i<stars;i++) {
     drawGlassStar(ctx,522+(i-(stars-1)/2)*62,600,p.edition);

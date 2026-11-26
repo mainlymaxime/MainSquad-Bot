@@ -1,3 +1,12 @@
+
+
+
+
+
+
+
+
+import { syncCardVoice } from '../services/cardStatsService.js';
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import {
     getJoinToCreateConfig,
@@ -36,6 +45,10 @@ export default {
         const cooldownKey = `${guildId}-${userId}`;
 
         cleanupCooldownEntries();
+
+        if (oldState.channelId !== newState.channelId) {
+            syncCardVoice(client).catch(error => logger.error('Identity voice tracking:', error));
+        }
 
         // =========================================================
         // VOICE LOGGING
@@ -694,3 +707,7 @@ function trimCooldownMapIfNeeded() {
         );
     }
 }
+
+
+
+

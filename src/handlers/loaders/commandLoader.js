@@ -13,7 +13,6 @@
 
 
 
-
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -340,5 +339,5 @@ export async function reloadCommand(client, commandName) {
 }
 
 
-\
+
 

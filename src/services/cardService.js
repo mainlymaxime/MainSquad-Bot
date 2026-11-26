@@ -2,6 +2,7 @@
 
 
 
+
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { getCardAbility } from './cardAbilityService.js';
@@ -46,11 +47,35 @@ async function readStats(client,guildId,userId) {
   (SELECT count(*) FROM rx) AS reactions`,[guildId,userId]);
   return {messages:Number(r.messages),voiceMs:Number(r.voice_ms),emoji:r.emoji,channel:r.channel,emojiCount:Number(r.emoji_count),distinctEmoji:Number(r.distinct_emoji),channelCount:Number(r.channel_count),topChannelCount:Number(r.top_channel_count),reactionCount:Number(r.reactions)};
 }
-// Coordinates measured directly from the five original templates at 1044 x 1472.
-const standardBars=[[105,789,834,32],[118,897,834,32],[118,1014,834,32]];
-const barPositions={pink:standardBars,bronze:standardBars,silver:standardBars,gold:standardBars,glitter:[[112,780,827,32],[124,887,828,32],[124,1003,828,32]]};
+// Detect the actual dark tracks in the loaded template, before drawing overlays.
+function detectBars(ctx, width, height, edition) {
+  const data=ctx.getImageData(0,0,width,height).data;
+  const sx=width/1044, sy=height/1472;
+  const lum=(x,y)=>{const i=(Math.round(y*sy)*width+Math.round(x*sx))*4;return .2126*data[i]+.7152*data[i+1]+.0722*data[i+2];};
+  const mean=y=>{let sum=0;for(let x=250;x<=850;x+=10)sum+=lum(x,y);return sum/61;};
+  const fallback=edition==='glitter'?[[112,780,827,32],[124,887,828,32],[124,1003,828,32]]:[[106,789,832,32],[118,897,832,32],[118,1014,832,32]];
+  return [805,912,1030].map((center,i)=>{
+    const start=center-48,end=center+48;
+    const rows=Array.from({length:end-start+1},(_,j)=>mean(start+j));
+    const min=Math.min(...rows), sorted=[...rows].sort((a,b)=>a-b), bg=sorted[Math.floor(sorted.length*.8)];
+    if(bg-min<15)return fallback[i];
+    const threshold=min+(bg-min)*.35;
+    let mid=rows.indexOf(min), top=mid,bottom=mid;
+    while(top>0&&rows[top-1]<threshold)top--;
+    while(bottom<rows.length-1&&rows[bottom+1]<threshold)bottom++;
+    const y=start+top,h=bottom-top+1;
+    if(h<15||h>48)return fallback[i];
+    const cy=y+Math.floor(h/2);
+    const isTrack=x=>lum(x,cy)<threshold+12;
+    let left=522,right=522;
+    while(left>65&&isTrack(left-1))left--;
+    while(right<990&&isTrack(right+1))right++;
+    if(right-left<650||right-left>900)return fallback[i];
+    return [left,y,right-left+1,h];
+  });
+}
 function drawProgressBar(ctx,x,y,w,h,f,edition){
-  const inset=2;
+  const inset=3;
   x+=inset;y+=inset;w-=inset*2;h-=inset*2;
   const width=w*clamp(f);if(width<=0)return;
   const colors={pink:['#f9c8d7','#c27080'],bronze:['#f4c9a6','#a86c48'],silver:['#e4eaf2','#8c9aa9'],gold:['#ffe5a4','#bc8d38'],glitter:['#e7d5ff','#a9dce8']};
@@ -116,6 +141,7 @@ export async function createIdentityCard(client,member) {
   const template=await loadImage(fileURLToPath(new URL(`../assets/cards/${p.edition}.png`,import.meta.url)));
   const canvas=createCanvas(template.width,template.height), ctx=canvas.getContext('2d');
   ctx.drawImage(template,0,0);
+  const bars=detectBars(ctx,template.width,template.height,p.edition);
   ctx.scale(template.width/1044,template.height/1472);
   drawCardFinish(ctx,p.edition);
   const glitter=p.edition==='glitter';
@@ -133,11 +159,10 @@ export async function createIdentityCard(client,member) {
   for(let i=0;i<stars;i++) {
     drawGlassStar(ctx,522+(i-(stars-1)/2)*62,600,p.edition);
   }
-  const bars=barPositions[p.edition];
   const minutes=Math.floor(stats.voiceMs/60000);
   const values=[fmt(stats.messages),`${Math.floor(minutes/60)} UUR EN ${minutes%60} MIN`,`LEVEL ${p.level}`];
   [p.m,p.v,p.reputation].forEach((fraction,i)=>{
-    const [x,y,w,h]=bars[i];text(values[i],x+w-8,y-10,21,480,'right');
+    const [x,y,w,h]=bars[i];text(values[i],x+w-8,y-16,21,480,'right');
     drawProgressBar(ctx,x,y,w,h,fraction,p.edition);
   });
   const ey=glitter?1155:1165;

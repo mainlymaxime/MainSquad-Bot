@@ -51,7 +51,7 @@ function detectBars(ctx, width, height, edition) {
   const sx=width/1044, sy=height/1472;
   const lum=(x,y)=>{const i=(Math.round(y*sy)*width+Math.round(x*sx))*4;return .2126*data[i]+.7152*data[i+1]+.0722*data[i+2];};
   const mean=y=>{let sum=0;for(let x=250;x<=850;x+=10)sum+=lum(x,y);return sum/61;};
-  const fallback=edition==='glitter'?[[112,780,827,32],[124,887,828,32],[124,1003,828,32]]:[[106,789,832,32],[118,897,832,32],[118,1014,832,32]];
+  const fallback=(edition==='glitter'||edition==='modcard')?[[112,780,827,32],[124,887,828,32],[124,1003,828,32]]:[[106,789,832,32],[118,897,832,32],[118,1014,832,32]];
   return [805,912,1030].map((center,i)=>{
     const start=center-48,end=center+48;
     const rows=Array.from({length:end-start+1},(_,j)=>mean(start+j));
@@ -76,7 +76,7 @@ function drawProgressBar(ctx,x,y,w,h,f,edition){
   const inset=3;
   x+=inset;y+=inset;w-=inset*2;h-=inset*2;
   const width=w*clamp(f);if(width<=0)return;
-  const colors={pink:['#f9c8d7','#c27080'],bronze:['#f4c9a6','#a86c48'],silver:['#e4eaf2','#8c9aa9'],gold:['#ffe5a4','#bc8d38'],glitter:['#e7d5ff','#a9dce8']};
+  const colors={pink:['#f9c8d7','#c27080'],bronze:['#f4c9a6','#a86c48'],silver:['#e4eaf2','#8c9aa9'],gold:['#ffe5a4','#bc8d38'],glitter:['#e7d5ff','#a9dce8'],modcard:['#f7d8ee','#a6b4d7']};
   const [light,dark]=colors[edition];
   ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,h/2);ctx.clip();
   ctx.beginPath();ctx.roundRect(x,y,width,h,Math.min(h/2,width/2));
@@ -85,7 +85,7 @@ function drawProgressBar(ctx,x,y,w,h,f,edition){
   ctx.fillStyle=g;ctx.fill();ctx.clip();
   ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(x,y+2,width,h*.22);ctx.restore();
 }
-const jewelColors={pink:['#fff1f6','#e6a8c0','#8c526b'],bronze:['#fff0d6','#d49a70','#75432e'],silver:['#f5fbff','#b3c9df','#566b85'],gold:['#fff8ce','#e9c16a','#96702e'],glitter:['#f9f0ff','#b7d9f4','#8070a5']};
+const jewelColors={pink:['#fff1f6','#e6a8c0','#8c526b'],bronze:['#fff0d6','#d49a70','#75432e'],silver:['#f5fbff','#b3c9df','#566b85'],gold:['#fff8ce','#e9c16a','#96702e'],glitter:['#f9f0ff','#b7d9f4','#8070a5'],modcard:['#fff3fc','#d2c2e9','#827499']};
 function starPath(ctx,x,y,r){
   ctx.beginPath();
   for(let j=0;j<10;j++){
@@ -128,6 +128,8 @@ function drawCardFinish(ctx,edition){
   ctx.beginPath();ctx.roundRect(7,7,1030,1458,15);ctx.strokeStyle=edge;ctx.lineWidth=5;ctx.stroke();
   ctx.beginPath();ctx.roundRect(13,13,1018,1446,12);ctx.strokeStyle='rgba(255,255,255,.30)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
 }
+// Staff identity badge: only members with the MainSquad moderator role.
+const MODERATOR_ROLE_ID = '1225514969270059063';
 async function remoteImage(url) {
   const response=await fetch(url,{signal:AbortSignal.timeout(8000)});
   if(!response.ok) throw new Error(`Image HTTP ${response.status}`);
@@ -136,13 +138,14 @@ async function remoteImage(url) {
 export async function createIdentityCard(client,member) {
   const stats=await readStats(client,member.guild.id,member.id);
   const p=cardProgress(stats.messages,stats.voiceMs), ability=getCardAbility(stats);
-  const template=await loadImage(fileURLToPath(new URL(`../assets/cards/${p.edition}.png`,import.meta.url)));
+  const edition=member.roles.cache.has(MODERATOR_ROLE_ID)?'modcard':p.edition;
+  const template=await loadImage(fileURLToPath(new URL(`../assets/cards/${edition}.png`,import.meta.url)));
   const canvas=createCanvas(template.width,template.height), ctx=canvas.getContext('2d');
   ctx.drawImage(template,0,0);
-  const bars=detectBars(ctx,template.width,template.height,p.edition);
+  const bars=detectBars(ctx,template.width,template.height,edition);
   ctx.scale(template.width/1044,template.height/1472);
-  drawCardFinish(ctx,p.edition);
-  const glitter=p.edition==='glitter';
+  drawCardFinish(ctx,edition);
+  const glitter=edition==='glitter'||edition==='modcard';
   const ink='#51434c';
   function text(value,x,y,size,maxWidth,align='center',family='IdentityPoppinsSemi') {
     ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillStyle=ink;
@@ -155,13 +158,13 @@ export async function createIdentityCard(client,member) {
   text(member.displayName || member.user.globalName || member.user.username,522,glitter?532:540,53,720,'center','IdentityHiguen');
   const stars=p.level;
   for(let i=0;i<stars;i++) {
-    drawGlassStar(ctx,522+(i-(stars-1)/2)*62,600,p.edition);
+    drawGlassStar(ctx,522+(i-(stars-1)/2)*62,600,edition);
   }
   const minutes=Math.floor(stats.voiceMs/60000);
   const values=[fmt(stats.messages),`${Math.floor(minutes/60)} UUR EN ${minutes%60} MIN`,`LEVEL ${p.level}`];
   [p.m,p.v,p.reputation].forEach((fraction,i)=>{
     const [x,y,w,h]=bars[i];text(values[i],x+w-8,y-16,21,480,'right');
-    drawProgressBar(ctx,x,y,w,h,fraction,p.edition);
+    drawProgressBar(ctx,x,y,w,h,fraction,edition);
   });
   const ey=glitter?1155:1165;
   let emojiDrawn=false;

@@ -5,19 +5,19 @@
 
 
 
-
-
+import { pgDb } from '../utils/postgresDatabase.js';
 import { logger } from '../utils/logger.js';
 export const CARD_CHANNEL_ID = '1575335887343059166';
 export const COMMUNITY_CHANNELS = new Set(['1225514970108923940','1257765402755203184','1532137707059544145','1500934706118524982','1467872818703106234','1246456986858422304','1225514970108923943','1547668790450462760','1539890074521706506','1225514970511315075','1475790153082605579','1446994430296064040']);
 export const RESTRICTED_CHANNEL = '1225514970108923943';
 const INTERVAL=30000;
 const sessions=new Map();
-let schemaPromise, timer;
+let schemaPromise, schemaPool, timer;
 let queue=Promise.resolve();
 export async function poolFor(client) {
- const pool=client.db?.db?.pool;
+ const pool=pgDb.pool;
  if(!pool) throw new Error('Identity requires PostgreSQL');
+ if(schemaPool!==pool){schemaPool=pool;schemaPromise=undefined;}
  if(!schemaPromise) schemaPromise=pool.query(`
  CREATE TABLE IF NOT EXISTS mainsquad_identity_stats (guild_id TEXT NOT NULL,user_id TEXT NOT NULL,messages BIGINT NOT NULL DEFAULT 0,voice_ms BIGINT NOT NULL DEFAULT 0,PRIMARY KEY(guild_id,user_id));
  CREATE TABLE IF NOT EXISTS identity_v3_messages (guild_id TEXT NOT NULL,user_id TEXT NOT NULL,message_id TEXT PRIMARY KEY,channel_id TEXT NOT NULL,emojis JSONB NOT NULL);

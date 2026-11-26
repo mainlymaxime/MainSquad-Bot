@@ -1,3 +1,12 @@
+
+
+
+
+
+
+
+
+import { recordCardMessage } from '../services/cardStatsService.js';
 import { Events } from 'discord.js';
 import { logger } from '../utils/logger.js';
 import { getLevelingConfig, getUserLevelData } from '../services/leveling/leveling.js';
@@ -51,6 +60,12 @@ export default {
       logger.debug(
         `Message received from ${message.author.tag}: ${message.content}`
       );
+
+      try {
+        await recordCardMessage(client, message);
+      } catch (error) {
+        logger.error('Identity message tracking:', error);
+      }
 
       const countingProcessed =
         await handleCountingGame(
@@ -690,3 +705,7 @@ async function handleLeveling(
     );
   }
 }
+
+
+
+

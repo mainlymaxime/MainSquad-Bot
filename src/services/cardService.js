@@ -1,5 +1,7 @@
 
 
+
+
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { getCardAbility } from './cardAbilityService.js';
@@ -73,7 +75,7 @@ function detectBars(ctx, width, height, edition) {
 }
 function drawProgressBar(ctx,x,y,w,h,f,edition,index){
   // The first track has a slightly more inset left edge in the artwork.
-  const leftInset=index===0?13:6, rightInset=6, verticalInset=5;
+  const leftInset=index===0?19:10, rightInset=10, verticalInset=7;
   x+=leftInset;y+=verticalInset;w-=leftInset+rightInset;h-=verticalInset*2;
   const width=w*clamp(f);if(width<=0)return;
   const colors={pink:['#f9c8d7','#c27080'],bronze:['#f4c9a6','#a86c48'],silver:['#e4eaf2','#8c9aa9'],gold:['#ffe5a4','#bc8d38'],glitter:['#e7d5ff','#a9dce8'],modcard:['#f7d8ee','#a6b4d7']};
@@ -81,9 +83,9 @@ function drawProgressBar(ctx,x,y,w,h,f,edition,index){
   ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,h/2);ctx.clip();
   ctx.beginPath();ctx.roundRect(x,y,width,h,Math.min(h/2,width/2));
   const g=ctx.createLinearGradient(x,y,x,y+h);
-  g.addColorStop(0,light);g.addColorStop(.20,'#fff8ed');g.addColorStop(.40,light);g.addColorStop(.78,dark);g.addColorStop(1,light);
+  g.addColorStop(0,light);g.addColorStop(.24,light);g.addColorStop(.75,dark);g.addColorStop(1,dark);
   ctx.fillStyle=g;ctx.fill();ctx.clip();
-  ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(x,y+2,width,h*.22);ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(x,y+2,width,h*.20);ctx.restore();
 }
 const jewelColors={pink:['#fff1f6','#e6a8c0','#8c526b'],bronze:['#fff0d6','#d49a70','#75432e'],silver:['#f5fbff','#b3c9df','#566b85'],gold:['#fff8ce','#e9c16a','#96702e'],glitter:['#f9f0ff','#b7d9f4','#8070a5'],modcard:['#fff3fc','#d2c2e9','#827499']};
 function starPath(ctx,x,y,r){
@@ -158,7 +160,15 @@ export async function createIdentityCard(client,member) {
   function text(value,x,y,size,maxWidth,align='center',family='IdentityPoppinsSemi') {
     ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillStyle=ink;
     do {ctx.font=family==='IdentityHiguen'?`${size}px "IdentityHiguen", "IdentityPoppins", "DejaVu Sans", sans-serif`:`${size}px "${family}"`;if(ctx.measureText(value).width<=maxWidth||size<=12)break;size--;}while(true);
-    ctx.fillText(value,x,y,maxWidth);
+    if (align==='center' && family==='IdentityHiguen') {
+      // Center the visible glyphs, rather than the font advance width.
+      ctx.textAlign='left';
+      const metrics=ctx.measureText(value);
+      const left=metrics.actualBoundingBoxLeft, right=metrics.actualBoundingBoxRight;
+      const offset=Number.isFinite(left)&&Number.isFinite(right)&&right+left>0
+        ? (left-right)/2 : -metrics.width/2;
+      ctx.fillText(value,x+offset,y,maxWidth);
+    } else ctx.fillText(value,x,y,maxWidth);
   }
   const avatar=await remoteImage(member.displayAvatarURL({extension:'png',size:512,forceStatic:true}));
   ctx.save();ctx.beginPath();ctx.arc(522,316,160,0,Math.PI*2);ctx.clip();

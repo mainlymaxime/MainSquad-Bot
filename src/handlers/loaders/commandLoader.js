@@ -2,6 +2,9 @@
 
 
 
+
+
+
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -278,7 +281,16 @@ export async function registerCommands(client, options = {}) {
 
     try {
         const { commands, totalSubcommands } = collectCommandPayloads(client);
-        await registerGlobalCommands(client, clientId, commands, totalSubcommands);
+        const card = commands.find(command => command.name === 'card' && (command.type ?? 1) === 1);
+        const globalCommands = commands.filter(command => command !== card);
+        await registerGlobalCommands(client, clientId, globalCommands, totalSubcommands);
+        if (card) {
+            const channel = await client.channels.fetch('1575335887343059166');
+            if (!channel?.guildId) throw new Error('MainSquad Identity channel not found');
+            validateCommands([card]);
+            await client.rest.post(`/applications/${clientId}/guilds/${channel.guildId}/commands`, { body: card });
+            logger.info('MainSquad Identity /card registered in guild');
+        }
     } catch (error) {
         logger.error('Error registering commands:', error);
         throw error;

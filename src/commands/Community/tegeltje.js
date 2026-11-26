@@ -1,10 +1,6 @@
 
 
 
-
-
-
-
 import { ContextMenuCommandBuilder, ApplicationCommandType, MessageFlags, AttachmentBuilder } from 'discord.js';
 import { createTegeltje } from '../../services/tegeltjeService.js';
 
@@ -39,9 +35,10 @@ export default {
       if (!channel?.isTextBased() || typeof channel.send !== 'function') {
         throw new Error('Tegeltjeskanaal niet beschikbaar');
       }
+      const authorMember = message.member ?? await interaction.guild.members.fetch(message.author.id).catch(() => null);
       const image = await createTegeltje({
         quote: message.cleanContent || message.content,
-        username: message.author.username,
+        username: authorMember?.displayName || message.author.globalName || message.author.username,
         avatarURL: message.author.displayAvatarURL({ extension: 'png', size: 256 })
       });
       await channel.send({

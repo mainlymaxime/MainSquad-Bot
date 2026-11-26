@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 import { Events, MessageFlags } from 'discord.js';
 import { logger } from '../utils/logger.js';
 import { getGuildConfig } from '../services/config/guildConfig.js';
@@ -58,7 +65,19 @@ export default {
         InteractionHelper.patchInteractionResponses(interaction);
         ResponseCoordinator.attach(interaction);
 
-        if (interaction.isChatInputCommand()) {
+        if (interaction.isMessageContextMenuCommand() && interaction.commandName === 'Maak een tegeltje') {
+          const command = client.commands.get(interaction.commandName);
+          if (!command) {
+            await interaction.reply({ content: 'Het tegeltjescommand is nog niet beschikbaar.', flags: MessageFlags.Ephemeral });
+            return;
+          }
+          if (isMaintenanceMode() && !isBotOwner(interaction.user.id)) {
+            await interaction.reply({ content: getBotMessage('maintenanceMode'), flags: MessageFlags.Ephemeral });
+            return;
+          }
+          await command.execute(interaction, null, client);
+          return;
+        } else if (interaction.isChatInputCommand()) {
           try {
             logger.info(`Command executed: /${interaction.commandName} by ${interaction.user.tag}`, {
               event: 'interaction.command.received',
@@ -469,3 +488,7 @@ export default {
     });
   }
 };
+
+
+
+

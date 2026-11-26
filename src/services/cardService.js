@@ -1,6 +1,5 @@
 
 
-
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { getCardAbility } from './cardAbilityService.js';
@@ -55,6 +54,49 @@ function drawProgressBar(ctx,x,y,w,h,f,edition){
   const g=ctx.createLinearGradient(x,y,x,y+h);g.addColorStop(0,'rgba(255,255,255,.72)');g.addColorStop(.25,light+'b8');g.addColorStop(.55,dark+'a0');g.addColorStop(1,light+'c0');ctx.fillStyle=g;ctx.fillRect(x,y,width,h);
   ctx.fillStyle='rgba(255,255,255,.25)';ctx.fillRect(x,y+2,width,h*.22);ctx.restore();
 }
+const jewelColors={pink:['#fff1f6','#e6a8c0','#8c526b'],bronze:['#fff0d6','#d49a70','#75432e'],silver:['#f5fbff','#b3c9df','#566b85'],gold:['#fff8ce','#e9c16a','#96702e'],glitter:['#f9f0ff','#b7d9f4','#8070a5']};
+function starPath(ctx,x,y,r){
+  ctx.beginPath();
+  for(let j=0;j<10;j++){
+    const a=-Math.PI/2+j*Math.PI/5, d=j%2?r*.46:r;
+    const px=x+Math.cos(a)*d,py=y+Math.sin(a)*d;
+    if(j===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.closePath();
+}
+function drawGlassStar(ctx,x,y,edition){
+  const [light,mid,dark]=jewelColors[edition];
+  ctx.save();ctx.lineJoin='round';
+  ctx.shadowColor='rgba(45,28,52,.38)';ctx.shadowBlur=6;ctx.shadowOffsetY=4;
+  starPath(ctx,x,y,27);ctx.fillStyle=dark;ctx.fill();
+  ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+  const rim=ctx.createLinearGradient(x-25,y-27,x+25,y+27);
+  rim.addColorStop(0,'#ffffff');rim.addColorStop(.3,mid);rim.addColorStop(.55,dark);rim.addColorStop(.78,'#ffffff');rim.addColorStop(1,dark);
+  starPath(ctx,x,y,27);ctx.fillStyle=rim;ctx.fill();
+  starPath(ctx,x,y,22.5);
+  const glass=ctx.createLinearGradient(x,y-23,x,y+23);
+  glass.addColorStop(0,'#ffffff');glass.addColorStop(.32,light);glass.addColorStop(.52,mid);glass.addColorStop(.65,dark);glass.addColorStop(1,light);
+  ctx.fillStyle=glass;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=1;ctx.stroke();
+  ctx.save();starPath(ctx,x,y,22.5);ctx.clip();
+  for(let j=0;j<10;j++){
+    const a=-Math.PI/2+j*Math.PI/5,b=a+Math.PI/5;
+    const r=j%2?10.35:22.5,t=j%2?22.5:10.35;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);ctx.lineTo(x+Math.cos(b)*t,y+Math.sin(b)*t);ctx.closePath();
+    ctx.fillStyle=j%3===0?'rgba(255,255,255,.32)':j%3===1?'rgba(45,30,70,.13)':'rgba(255,255,255,.06)';ctx.fill();
+  }
+  ctx.beginPath();ctx.ellipse(x-5,y-12,12,4,-.38,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.7)';ctx.fill();ctx.restore();
+  ctx.restore();
+}
+function drawCardFinish(ctx,edition){
+  ctx.save();
+  const gloss=ctx.createLinearGradient(0,0,1044,850);
+  gloss.addColorStop(0,'rgba(255,255,255,0)');gloss.addColorStop(.25,'rgba(255,255,255,0)');gloss.addColorStop(.34,'rgba(255,255,255,.15)');gloss.addColorStop(.40,'rgba(255,255,255,.035)');gloss.addColorStop(.48,'rgba(255,255,255,0)');gloss.addColorStop(.76,'rgba(255,255,255,0)');gloss.addColorStop(.81,edition==='glitter'?'rgba(210,240,255,.16)':'rgba(255,255,255,.09)');gloss.addColorStop(.88,'rgba(255,255,255,0)');gloss.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=gloss;ctx.fillRect(0,0,1044,1472);
+  const edge=ctx.createLinearGradient(0,0,1044,1472);
+  edge.addColorStop(0,'rgba(255,255,255,.85)');edge.addColorStop(.45,'rgba(255,255,255,.18)');edge.addColorStop(1,'rgba(65,40,65,.32)');
+  ctx.beginPath();ctx.roundRect(7,7,1030,1458,15);ctx.strokeStyle=edge;ctx.lineWidth=5;ctx.stroke();
+  ctx.beginPath();ctx.roundRect(13,13,1018,1446,12);ctx.strokeStyle='rgba(255,255,255,.30)';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+}
 async function remoteImage(url) {
   const response=await fetch(url,{signal:AbortSignal.timeout(8000)});
   if(!response.ok) throw new Error(`Image HTTP ${response.status}`);
@@ -67,6 +109,7 @@ export async function createIdentityCard(client,member) {
   const canvas=createCanvas(template.width,template.height), ctx=canvas.getContext('2d');
   ctx.drawImage(template,0,0);
   ctx.scale(template.width/1044,template.height/1472);
+  drawCardFinish(ctx,p.edition);
   const glitter=p.edition==='glitter';
   const ink='#51434c';
   function text(value,x,y,size,maxWidth,align='center',family='IdentityPoppinsSemi') {
@@ -80,17 +123,7 @@ export async function createIdentityCard(client,member) {
   text(member.user.username,522,glitter?532:540,53,720,'center','IdentityHiguen');
   const stars=Math.min(p.level+1,5);
   for(let i=0;i<stars;i++) {
-    const x=522+(i-(stars-1)/2)*62, y=600;
-    ctx.beginPath();
-    for(let j=0;j<10;j++) {
-      const a=-Math.PI/2+j*Math.PI/5, r=j%2?11:25;
-      const px=x+Math.cos(a)*r, py=y+Math.sin(a)*r;
-      if(j===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
-    }
-    ctx.closePath();
-    const gradient=ctx.createLinearGradient(x-25,y-25,x+25,y+25);
-    gradient.addColorStop(0,'#ffffff');gradient.addColorStop(.45,'#e4d7dd');gradient.addColorStop(1,'#796772');
-    ctx.fillStyle=gradient;ctx.fill();ctx.strokeStyle=ink;ctx.lineWidth=1.5;ctx.stroke();
+    drawGlassStar(ctx,522+(i-(stars-1)/2)*62,600,p.edition);
   }
   const bars=barPositions[p.edition];
   const minutes=Math.floor(stats.voiceMs/60000);

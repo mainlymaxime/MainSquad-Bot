@@ -1,7 +1,6 @@
 
 
 
-
 import { logger, startupLog } from "../utils/logger.js";
 import { getFromDb } from "../utils/database.js";
 import { pgDb } from "../utils/postgresDatabase.js";
@@ -96,7 +95,7 @@ async function checkMainly(client, pool, channel) {
       color: 0xc27080,
       title: "🔴 MainlyMaxime is LIVE! 🩷",
       description: "Hiya! ya gurl is nu Live 🩷\n\nKom je chillen en yappen? ✨\n\n*Wist jij dat je door te kijken punten verzameld? Deze zijn mega handig voor de opkomende give-aways!* 🎁",
-      image: { url: "https://cdn.discordapp.com/attachments/1325895597458325536/1539886333655388221/Ya_gurl_is_live.png?ex=6a889b27&is=6a8749a7&hm=5e065cdc0ddec960e1ea9df37183359f7aa4e91018ac54989bbf67d7a1426ec5&" },
+      image: { url: "https://cdn.discordapp.com/attachments/1325895597458325536/1575539717368193126/Ya_gurl_is_live_1.png?ex=6b09a734&is=6b0855b4&hm=b02354375e43f5cdb899dbccf262739390f94e5439151c864b9b029623ffdb0f&" },
       footer: { text: "MainSquad 🩷 • MainlyMaxime" }, timestamp: new Date()
     }], components: button("mainlymaxime")
   });

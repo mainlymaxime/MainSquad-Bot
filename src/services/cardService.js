@@ -1,12 +1,6 @@
 
 
 
-
-
-
-
-
-
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { getCardAbility } from './cardAbilityService.js';
@@ -116,7 +110,7 @@ export async function createIdentityCard(client,member) {
   if(!emojiDrawn) text(stats.emoji?'NIET BESCHIKBAAR':'NOG GEEN EMOTE',233,ey,23,300);
   const channel=stats.channel?member.guild.channels.cache.get(stats.channel):null;
   const visible=channel?.permissionsFor(member)?.has('ViewChannel') && COMMUNITY_CHANNELS.has(channel.id) && channel.id!==RESTRICTED_CHANNEL && !channel.nsfw;
-  text((channel?(visible?`#${channel.name}`:'Privékanaal'):'Nog geen kanaal').toUpperCase(),795,ey,24,360);
+  text((channel?(visible?`#${channel.name.replace(/[^\p{L}\p{N} _-]/gu, "").replace(/^[ _-]+|[ _-]+$/g, "") || "KANAAL"}`:'Privékanaal'):'Nog geen kanaal').toUpperCase(),795,ey,24,360);
   text(ability.title.toUpperCase(),522,glitter?1245:1258,32,790);
   text(ability.description.toUpperCase(),522,glitter?1295:1308,21,790,'center','IdentityPoppinsItalic');
   return canvas.toBuffer('image/png');

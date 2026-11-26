@@ -1,6 +1,5 @@
 
 
-
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { getCardAbility } from './cardAbilityService.js';
@@ -72,9 +71,10 @@ function detectBars(ctx, width, height, edition) {
     return [left,y,right-left+1,h];
   });
 }
-function drawProgressBar(ctx,x,y,w,h,f,edition){
-  const inset=3;
-  x+=inset;y+=inset;w-=inset*2;h-=inset*2;
+function drawProgressBar(ctx,x,y,w,h,f,edition,index){
+  // The first track has a slightly more inset left edge in the artwork.
+  const leftInset=index===0?13:6, rightInset=6, verticalInset=5;
+  x+=leftInset;y+=verticalInset;w-=leftInset+rightInset;h-=verticalInset*2;
   const width=w*clamp(f);if(width<=0)return;
   const colors={pink:['#f9c8d7','#c27080'],bronze:['#f4c9a6','#a86c48'],silver:['#e4eaf2','#8c9aa9'],gold:['#ffe5a4','#bc8d38'],glitter:['#e7d5ff','#a9dce8'],modcard:['#f7d8ee','#a6b4d7']};
   const [light,dark]=colors[edition];
@@ -130,6 +130,14 @@ function drawCardFinish(ctx,edition){
 }
 // Staff identity badge: only members with the MainSquad moderator role.
 const MODERATOR_ROLE_ID = '1225514969270059063';
+function cardDisplayName(member) {
+  const original=member.displayName || member.user.globalName || member.user.username;
+  // Discord decorative mathematical letters become ordinary readable letters.
+  const normalized=original.normalize('NFKC').replace(/[\p{Cf}\p{Cc}]/gu,'').trim();
+  const readable=normalized.replace(/[^\p{L}\p{N}\p{M} ._\-’']/gu,'').trim();
+  if (/[\p{L}\p{N}]/u.test(readable)) return readable;
+  return member.user.username.normalize('NFKC');
+}
 async function remoteImage(url) {
   const response=await fetch(url,{signal:AbortSignal.timeout(8000)});
   if(!response.ok) throw new Error(`Image HTTP ${response.status}`);
@@ -149,13 +157,13 @@ export async function createIdentityCard(client,member) {
   const ink='#51434c';
   function text(value,x,y,size,maxWidth,align='center',family='IdentityPoppinsSemi') {
     ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillStyle=ink;
-    do {ctx.font=`${size}px "${family}"`;if(ctx.measureText(value).width<=maxWidth||size<=12)break;size--;}while(true);
+    do {ctx.font=family==='IdentityHiguen'?`${size}px "IdentityHiguen", "IdentityPoppins", "DejaVu Sans", sans-serif`:`${size}px "${family}"`;if(ctx.measureText(value).width<=maxWidth||size<=12)break;size--;}while(true);
     ctx.fillText(value,x,y,maxWidth);
   }
   const avatar=await remoteImage(member.displayAvatarURL({extension:'png',size:512,forceStatic:true}));
   ctx.save();ctx.beginPath();ctx.arc(522,316,160,0,Math.PI*2);ctx.clip();
   ctx.drawImage(avatar,362,156,320,320);ctx.restore();
-  text(member.displayName || member.user.globalName || member.user.username,522,glitter?532:540,53,720,'center','IdentityHiguen');
+  text(cardDisplayName(member),522,glitter?532:540,53,720,'center','IdentityHiguen');
   const stars=p.level;
   for(let i=0;i<stars;i++) {
     drawGlassStar(ctx,522+(i-(stars-1)/2)*62,600,edition);
@@ -164,7 +172,7 @@ export async function createIdentityCard(client,member) {
   const values=[fmt(stats.messages),`${Math.floor(minutes/60)} UUR EN ${minutes%60} MIN`,`LEVEL ${p.level}`];
   [p.m,p.v,p.reputation].forEach((fraction,i)=>{
     const [x,y,w,h]=bars[i];text(values[i],x+w-8,y-16,21,480,'right');
-    drawProgressBar(ctx,x,y,w,h,fraction,edition);
+    drawProgressBar(ctx,x,y,w,h,fraction,edition,i);
   });
   const ey=glitter?1155:1165;
   let emojiDrawn=false;

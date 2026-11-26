@@ -5,6 +5,10 @@
 
 
 
+
+
+
+
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -46,7 +50,7 @@ async function getAllFiles(directory, fileList = []) {
         const filePath = path.join(directory, file.name);
         
         if (file.isDirectory()) {
-            if (file.name === 'modules') {
+            if (['modules', 'economy'].includes(file.name.toLowerCase())) {
                 continue;
             }
             await getAllFiles(filePath, fileList);

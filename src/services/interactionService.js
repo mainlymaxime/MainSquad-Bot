@@ -2,17 +2,13 @@
 
 
 
-
-
-
-
-
-import { SlashCommandBuilder, MessageFlags } from 'discord.js';
+import { createInteractionCard } from './interactionCardService.js';
+import { SlashCommandBuilder, MessageFlags, AttachmentBuilder } from 'discord.js';
 import { pgDb } from '../utils/postgresDatabase.js';
 const actions = {
   "hug": {
     "emoji": "🧸",
-    "role": "Certified Cuddler",
+    "role": "1575589382361194768",
     "lines": [
       "{actor} knuffelt {target}. Gratis therapie!",
       "{actor} knuffelt {target}. Social battery +10%.",
@@ -38,7 +34,7 @@ const actions = {
   },
   "spank": {
     "emoji": "🍑",
-    "role": "Professional Spanker",
+    "role": "1575589591795236935",
     "lines": [
       "{actor} heeft {target} spanked. 10/10 voor techniek!",
       "{actor} heeft {target} spanked. Een applaus voor de uitvoering.",
@@ -64,7 +60,7 @@ const actions = {
   },
   "hit": {
     "emoji": "🥊",
-    "role": "Walking Red Flag",
+    "role": "1575590060324028496",
     "lines": [
       "{actor} mept {target}. Een virtueel tikje met liefde.",
       "{actor} mept {target}. Critical hit in de cartoonarena!",
@@ -90,7 +86,7 @@ const actions = {
   },
   "kiss": {
     "emoji": "💋",
-    "role": "Serial Kisser",
+    "role": "1575590181874962474",
     "lines": [
       "{actor} zoent {target}. Nieuwe ship unlocked!",
       "{actor} zoent {target}. De vlinders maken overuren.",
@@ -116,7 +112,7 @@ const actions = {
   },
   "lick": {
     "emoji": "👅",
-    "role": "Certified Weirdo",
+    "role": "1575590756716912651",
     "lines": [
       "{actor} likt {target}. Smaakt naar vriendschap.",
       "{actor} likt {target}. Een gouden ster voor originaliteit.",
@@ -142,7 +138,7 @@ const actions = {
   },
   "yeet": {
     "emoji": "🚀",
-    "role": "Human Catapult",
+    "role": "1575590308971024586",
     "lines": [
       "{actor} yeet {target}. Goede vlucht, bestie!",
       "{actor} yeet {target}. NASA is onder de indruk.",
@@ -168,7 +164,7 @@ const actions = {
   },
   "highfive": {
     "emoji": "🙌",
-    "role": "Professional Hypeperson",
+    "role": "1575590407662997504",
     "lines": [
       "{actor} highfivet {target}. Absolute legends!",
       "{actor} highfivet {target}. Teamwork makes the dream work.",
@@ -209,8 +205,8 @@ async function poolFor() {
   await schema; return pool;
 }
 const privateReply = (i,content) => i.reply({content,flags:MessageFlags.Ephemeral});
-async function award(member, roleName) {
-  const role = member.guild.roles.cache.find(r => r.name === roleName || r.name.endsWith(' '+roleName));
+async function award(member, roleId) {
+  const role = await member.guild.roles.fetch(roleId).catch(() => null);
   if (!role || member.roles.cache.has(role.id) || !role.editable || role.managed) return null;
   try { await member.roles.add(role); return role.name; } catch(e) { console.error('Interaction role:',e); return null; }
 }
@@ -236,7 +232,7 @@ export function makeInteractionCommand(action) {
         if(!inserted.rowCount) return i.editReply('Deze interactie is al verwerkt.');
         const cfg=actions[action], line=cfg.lines[Math.floor(Math.random()*cfg.lines.length)].replaceAll('{actor}',`<@${actor.id}>`).replaceAll('{target}',`<@${target.id}>`);
         const unlocked=[];
-        try { const member=await i.guild.members.fetch(actor.id); if(Number(counts.rows[0].specific)>=50) unlocked.push(await award(member,cfg.role)); if(Number(counts.rows[0].total)>=500) unlocked.push(await award(member,'MainSquad Menace')); } catch(e){console.error('Interaction achievements:',e);}
+        try { const member=await i.guild.members.fetch(actor.id); if(Number(counts.rows[0].specific)>=50) unlocked.push(await award(member,cfg.role)); if(Number(counts.rows[0].total)>=500) unlocked.push(await award(member,'1575590529482105064')); } catch(e){console.error('Interaction achievements:',e);}
         await i.editReply({content:cfg.emoji+' '+line+unlocked.filter(Boolean).map(r=>'\n🏆 Achievement unlocked: **'+r+'**!').join(''),allowedMentions:{parse:[],users:[actor.id,target.id]}});
       } catch(e){if(db){await db.query('ROLLBACK').catch(()=>{});db.release();} console.error('Mainly Interactions:',e);await i.editReply('🩷 Interactie kon niet worden verwerkt. Probeer later opnieuw.');}
     }};
@@ -248,7 +244,9 @@ export async function interactionStats(i) {
     const pool=await poolFor();
     const result=await pool.query('SELECT action,count(*) FILTER(WHERE actor=$2) AS given,count(*) FILTER(WHERE target=$2) AS received FROM mainly_interaction_events WHERE guild_id=$1 AND (actor=$2 OR target=$2) GROUP BY action',[i.guildId,i.user.id]);
     const rows=new Map(result.rows.map(r=>[r.action,r]));
-    await i.editReply('**Mainly Interactions — Given / Received**\n'+Object.entries(actions).map(([k,v])=>`${v.emoji} ${k}: **${rows.get(k)?.given||0} / ${rows.get(k)?.received||0}**`).join('\n'));
+    const member=await i.guild.members.fetch(i.user.id);
+    const image=await createInteractionCard(member,rows);
+    await i.editReply({files:[new AttachmentBuilder(image,{name:'mainly-interactions.png'})],allowedMentions:{parse:[]}});
   }catch(e){console.error(e);await i.editReply('Statistieken tijdelijk niet beschikbaar.');}
 }
 export async function interactionPrivacy(i) {
@@ -260,4 +258,3 @@ export async function interactionPrivacy(i) {
 
 
 
-⋮⋮⋮⋮

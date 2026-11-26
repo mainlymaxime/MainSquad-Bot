@@ -3,6 +3,10 @@
 
 
 
+
+
+
+
 import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { pgDb } from '../utils/postgresDatabase.js';
 const actions = {
@@ -10,31 +14,51 @@ const actions = {
     "emoji": "🧸",
     "role": "Certified Cuddler",
     "lines": [
-      "{actor} geeft {target} een knuffel. Emotionele schade tijdelijk gerepareerd.",
-      "{actor} heeft {target} geknuffeld. Gratis therapie!",
-      "{actor} knuffelt {target} alsof de huur ervan afhangt.",
-      "{actor} heeft {target} officieel geclaimd als knuffelbeer.",
-      "{actor} geeft {target} een knuffel. Social battery +10%.",
-      "{actor} knuffelt {target}. Even geen mentale aftakeling.",
-      "{actor} heeft {target} gevangen in een liefdevolle houdgreep.",
-      "{actor} geeft {target} een knuffel. Terugknuffelen is optioneel, maar gewaardeerd.",
-      "{actor} heeft {target} voorzien van een dagelijkse dosis liefde.",
-      "{actor} knuffelt {target}. Alles komt goed. Waarschijnlijk."
+      "{actor} knuffelt {target}. Gratis therapie!",
+      "{actor} knuffelt {target}. Social battery +10%.",
+      "{actor} knuffelt {target}. Knuffel van het jaar!",
+      "{actor} knuffelt {target}. Alle stress verdwijnt spontaan.",
+      "{actor} knuffelt {target}. Een dagelijkse dosis liefde.",
+      "{actor} knuffelt {target}. Friendship +100 XP.",
+      "{actor} knuffelt {target}. Instant comfort unlocked.",
+      "{actor} knuffelt {target}. De wereld is weer een stukje mooier.",
+      "{actor} knuffelt {target}. Officieel knuffelbeerwaardig.",
+      "{actor} knuffelt {target}. Een dikke tien voor gezelligheid.",
+      "{actor} knuffelt {target}. Personal space, hallo?!",
+      "{actor} knuffelt {target}. HELP, zuurstof graag.",
+      "{actor} knuffelt {target}. Dit duurt ongemakkelijk lang.",
+      "{actor} knuffelt {target}. De knuffelabonnementen zijn op.",
+      "{actor} knuffelt {target}. Er kraakt iets. Hopelijk geen rib.",
+      "{actor} knuffelt {target}. De social battery is nu leeg.",
+      "{actor} knuffelt {target}. Loslaten is ook een optie.",
+      "{actor} knuffelt {target}. De ontsnappingsroute is geblokkeerd.",
+      "{actor} knuffelt {target}. Iemand heeft de afstandsbediening nodig.",
+      "{actor} knuffelt {target}. Dit had ook een emoji kunnen zijn."
     ]
   },
   "spank": {
     "emoji": "🍑",
     "role": "Professional Spanker",
     "lines": [
+      "{actor} heeft {target} spanked. 10/10 voor techniek!",
+      "{actor} heeft {target} spanked. Een applaus voor de uitvoering.",
+      "{actor} heeft {target} spanked. Perfecte timing!",
+      "{actor} heeft {target} spanked. De soundboard heeft een nieuwe hit.",
+      "{actor} heeft {target} spanked. Een gouden medaille voor precisie.",
+      "{actor} heeft {target} spanked. Booty Hunter energy!",
+      "{actor} heeft {target} spanked. De jury geeft vijf sterren.",
+      "{actor} heeft {target} spanked. Een legendarische cartoonmove.",
+      "{actor} heeft {target} spanked. De timing was chef’s kiss.",
+      "{actor} heeft {target} spanked. De MainSquad applaudisseert.",
       "{actor} heeft {target} spanked. De echo was hoorbaar in Maastricht.",
       "{actor} heeft {target} spanked. Emotional damage!",
       "{actor} heeft {target} spanked. De mods kijken even de andere kant op.",
-      "{actor} heeft {target} spanked. Critical booty damage!",
-      "{actor} heeft {target} spanked. Achievement unlocked: Booty Hunter.",
+      "{actor} heeft {target} spanked. De advocaat is onderweg.",
       "{actor} heeft {target} spanked. Dat stond niet in de algemene voorwaarden.",
-      "{actor} heeft {target} spanked. De hele Discord was getuige.",
+      "{actor} heeft {target} spanked. De administratie opent een dossier.",
       "{actor} heeft {target} spanked. Geen restitutie mogelijk.",
-      "{actor} heeft {target} spanked. 10/10 voor de geluidseffecten.",
+      "{actor} heeft {target} spanked. De stoel is nu officieel vijand nummer één.",
+      "{actor} heeft {target} spanked. De geluidsoverlast is gemeld.",
       "{actor} heeft {target} spanked. Weer een normale dag in de MainSquad."
     ]
   },
@@ -42,47 +66,77 @@ const actions = {
     "emoji": "🥊",
     "role": "Walking Red Flag",
     "lines": [
-      "{actor} heeft {target} gemept. De vriendschap hangt aan een zijden draadje.",
-      "{actor} mept {target}. Communicatie is ook niet voor iedereen.",
-      "{actor} heeft {target} een tik gegeven. Critical hit!",
-      "{actor} mept {target}. Een diplomatieke oplossing bleek niet mogelijk.",
-      "{actor} heeft {target} gemept. De gezamenlijke hersencel is zoek.",
-      "{actor} geeft {target} een virtuele mep. Skill issue.",
+      "{actor} mept {target}. Een virtueel tikje met liefde.",
+      "{actor} mept {target}. Critical hit in de cartoonarena!",
+      "{actor} mept {target}. De vriendschap kan tegen een stootje.",
+      "{actor} mept {target}. Perfecte timing in de game.",
+      "{actor} mept {target}. Een tien voor de slapstick.",
+      "{actor} mept {target}. De trainingsronde is geslaagd.",
+      "{actor} mept {target}. Een vriendschappelijke cartoonbonk.",
+      "{actor} mept {target}. De virtuele bokshandschoen krijgt applaus.",
+      "{actor} mept {target}. Sparringpartner van het jaar.",
+      "{actor} mept {target}. Een legendarische game-move.",
       "{actor} mept {target}. Vriendschap -5 XP.",
-      "{actor} heeft {target} geraakt. De respawn begint over drie seconden.",
+      "{actor} mept {target}. Dit had ook een e-mail kunnen zijn.",
+      "{actor} mept {target}. De diplomatie is mislukt.",
+      "{actor} mept {target}. De respawn begint over drie seconden.",
       "{actor} mept {target}. De groepsapp blijft voorlopig stil.",
-      "{actor} heeft {target} gemept. Dit had ook een e-mail kunnen zijn."
+      "{actor} mept {target}. De gezamenlijke hersencel is zoek.",
+      "{actor} mept {target}. De scheidsrechter fluit af.",
+      "{actor} mept {target}. De virtuele advocaat is onderweg.",
+      "{actor} mept {target}. De cartoonpleister ligt klaar.",
+      "{actor} mept {target}. Skill issue."
     ]
   },
   "kiss": {
     "emoji": "💋",
     "role": "Serial Kisser",
     "lines": [
-      "{actor} geeft {target} een kusje. GET A ROOM.",
-      "{actor} heeft {target} gekust. De fanfiction schrijft zichzelf.",
-      "{actor} geeft {target} een kusje. Romance isn’t dead.",
-      "{actor} kust {target}. De MainSquad kijkt geïnteresseerd mee.",
-      "{actor} geeft {target} een kusje. Nieuwe ship unlocked!",
-      "{actor} heeft {target} gekust. De roddelpers is onderweg.",
-      "{actor} geeft {target} een kusje. Iemand is aanhankelijk vandaag.",
-      "{actor} kust {target}. Friendship premium unlocked.",
-      "{actor} heeft {target} een kusje gegeven. Schattig. Misselijkmakend, maar schattig.",
-      "{actor} kust {target}. De trouwlocatie is nog niet geboekt."
+      "{actor} zoent {target}. Nieuwe ship unlocked!",
+      "{actor} zoent {target}. De vlinders maken overuren.",
+      "{actor} zoent {target}. Romance is alive!",
+      "{actor} zoent {target}. Een tien voor romantiek.",
+      "{actor} zoent {target}. De fanfiction schrijft zichzelf.",
+      "{actor} zoent {target}. Cupido is trots.",
+      "{actor} zoent {target}. Een kusje voor het goede humeur.",
+      "{actor} zoent {target}. Friendship premium unlocked.",
+      "{actor} zoent {target}. De rozen zijn onderweg.",
+      "{actor} zoent {target}. Hollywood wil de filmrechten.",
+      "{actor} zoent {target}. IEUWWW, mondspoeling graag.",
+      "{actor} zoent {target}. Wie heeft er knoflook gegeten?",
+      "{actor} zoent {target}. GET A ROOM.",
+      "{actor} zoent {target}. De tandarts wil een woordje spreken.",
+      "{actor} zoent {target}. Dit stond niet op de bingo kaart.",
+      "{actor} zoent {target}. De chat heeft collectief kippenvel.",
+      "{actor} zoent {target}. Waar is de desinfectiegel?",
+      "{actor} zoent {target}. De romantiek heeft ontslag genomen.",
+      "{actor} zoent {target}. De camera mag nu uit.",
+      "{actor} zoent {target}. Dat was een natte bedoening."
     ]
   },
   "lick": {
     "emoji": "👅",
     "role": "Certified Weirdo",
     "lines": [
-      "{actor} heeft {target} gelikt. We luisteren en we oordelen niet.",
-      "{actor} likt {target}. Waarom? Niemand weet het.",
-      "{actor} heeft {target} gelikt. Smaakt naar slechte beslissingen.",
-      "{actor} likt {target}. De beschaving gaat achteruit.",
-      "{actor} heeft {target} gelikt. Eigendomsrecht niet gegarandeerd.",
+      "{actor} likt {target}. Smaakt naar vriendschap.",
+      "{actor} likt {target}. Een gouden ster voor originaliteit.",
+      "{actor} likt {target}. Een bijzonder compliment blijkbaar.",
+      "{actor} likt {target}. Smaakt naar aardbeienijs.",
+      "{actor} likt {target}. De smaaktest is geslaagd.",
+      "{actor} likt {target}. Vijf sterren op de smaakkaart.",
+      "{actor} likt {target}. Een likje geluk.",
+      "{actor} likt {target}. De smaakpapillen vieren feest.",
+      "{actor} likt {target}. Smaakt naar overwinning.",
+      "{actor} likt {target}. Een onverwacht vrolijke begroeting.",
+      "{actor} likt {target}. HAAL DE DETTOL.",
+      "{actor} likt {target}. IEUW, waarom?!",
+      "{actor} likt {target}. Smaakt naar slechte beslissingen.",
       "{actor} likt {target}. Een normale begroeting was ook een optie.",
-      "{actor} heeft {target} gelikt. Desinfectiemiddel staat klaar.",
+      "{actor} likt {target}. De beschaving gaat achteruit.",
       "{actor} likt {target}. De laatste hersencel heeft ontslag genomen.",
-      "{actor} heeft {target} gelikt. Absoluut niemand heeft hierom gevraagd.",
+      "{actor} likt {target}. De hygiënepolitie is onderweg.",
+      "{actor} likt {target}. Dit had niemand op zijn bingokaart.",
+      "{actor} likt {target}. De zeep staat klaar.",
       "{actor} likt {target}. Tijd om het internet uit te zetten."
     ]
   },
@@ -90,32 +144,52 @@ const actions = {
     "emoji": "🚀",
     "role": "Human Catapult",
     "lines": [
-      "{actor} heeft {target} ge-yeet. Vlieg hoog, kameraad.",
-      "{actor} lanceert {target} richting de maan. Enkele reis.",
-      "{actor} heeft {target} weggegooid. Retourneren is niet mogelijk.",
-      "{actor} lanceert {target}. NASA is geïnteresseerd.",
-      "{actor} heeft {target} naar een andere dimensie gestuurd.",
-      "{actor} yeet {target}. Gratis vakantie zonder terugvlucht.",
-      "{actor} lanceert {target}. De zwaartekracht heeft verloren.",
-      "{actor} heeft {target} verwijderd uit de directe omgeving.",
-      "{actor} yeet {target}. Verwachte landing: ergens volgende week.",
-      "{actor} lanceert {target}. Ryanair vraagt hiervoor normaal €49,95."
+      "{actor} yeet {target}. Goede vlucht, bestie!",
+      "{actor} yeet {target}. NASA is onder de indruk.",
+      "{actor} yeet {target}. Gratis vakantie unlocked!",
+      "{actor} yeet {target}. Een tien voor de lancering.",
+      "{actor} yeet {target}. Vlieg hoog, kameraad!",
+      "{actor} yeet {target}. De zwaartekracht heeft verloren.",
+      "{actor} yeet {target}. Een nieuw wereldrecord!",
+      "{actor} yeet {target}. Businessclass naar de maan.",
+      "{actor} yeet {target}. De sterren liggen binnen handbereik.",
+      "{actor} yeet {target}. Perfecte landing, vijf sterren.",
+      "{actor} yeet {target}. Ryanair biedt excuses aan.",
+      "{actor} yeet {target}. Retourneren is niet mogelijk.",
+      "{actor} yeet {target}. Verwachte landing: volgende week.",
+      "{actor} yeet {target}. De bagage is zoek.",
+      "{actor} yeet {target}. De vlucht heeft geen terugticket.",
+      "{actor} yeet {target}. Houston, we have a problem.",
+      "{actor} yeet {target}. De landing was minder elegant.",
+      "{actor} yeet {target}. De navigatie is uitgevallen.",
+      "{actor} yeet {target}. De verzekering dekt dit niet.",
+      "{actor} yeet {target}. De bestemming is onbekend."
     ]
   },
   "highfive": {
     "emoji": "🙌",
     "role": "Professional Hypeperson",
     "lines": [
-      "{actor} geeft {target} een high five. Samen één hersencel.",
-      "{actor} en {target} geven elkaar een high five. Teamwork makes the dream work.",
-      "{actor} geeft {target} een high five. Competentie tijdelijk vastgesteld.",
-      "{actor} en {target} vieren iets. Niemand weet precies wat.",
-      "{actor} geeft {target} een high five. Friendship +10 XP.",
-      "{actor} en {target} hebben zojuist geschiedenis geschreven. Min of meer.",
-      "{actor} geeft {target} een high five. Absolute legends.",
-      "{actor} en {target} synchroniseren hun laatste hersencellen.",
-      "{actor} geeft {target} een high five. Missie geslaagd!",
-      "{actor} en {target} geven elkaar een high five. Main character energy."
+      "{actor} highfivet {target}. Absolute legends!",
+      "{actor} highfivet {target}. Teamwork makes the dream work.",
+      "{actor} highfivet {target}. Friendship +10 XP.",
+      "{actor} highfivet {target}. Missie geslaagd!",
+      "{actor} highfivet {target}. Main character energy.",
+      "{actor} highfivet {target}. Perfecte synchronisatie.",
+      "{actor} highfivet {target}. Een tien voor teamwork.",
+      "{actor} highfivet {target}. De overwinning is binnen.",
+      "{actor} highfivet {target}. De hele squad applaudisseert.",
+      "{actor} highfivet {target}. Dat verdient een tweede high five.",
+      "{actor} highfivet {target}. Oeps, mis.",
+      "{actor} highfivet {target}. De lucht heeft gewonnen.",
+      "{actor} highfivet {target}. Au, iets te enthousiast.",
+      "{actor} highfivet {target}. De timing was dramatisch.",
+      "{actor} highfivet {target}. De hand bleef ongemakkelijk hangen.",
+      "{actor} highfivet {target}. De gezamenlijke hersencel was afwezig.",
+      "{actor} highfivet {target}. Dit wordt uit de montage geknipt.",
+      "{actor} highfivet {target}. De jury geeft een magere twee.",
+      "{actor} highfivet {target}. Een high five met vertraging.",
+      "{actor} highfivet {target}. De pols vraagt om vakantie."
     ]
   }
 };
@@ -186,3 +260,4 @@ export async function interactionPrivacy(i) {
 
 
 
+⋮⋮⋮⋮

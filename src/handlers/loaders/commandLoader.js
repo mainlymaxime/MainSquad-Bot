@@ -1,3 +1,7 @@
+
+
+
+
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -222,18 +226,24 @@ function validateCommands(commands) {
 }
 
 function prepareCommandsForRegistration(commands) {
-    if (commands.length >= COMMAND_COUNT_WARN_THRESHOLD) {
-        logger.warn(`Command count (${commands.length}) is near Discord's ${MAX_COMMANDS} global command limit`);
+    // Discord applies separate limits to each application command type.
+    const limits = new Map([[1, MAX_COMMANDS], [2, 5], [3, 5]]);
+    const counts = new Map();
+
+    for (const command of commands) {
+        const type = command.type ?? 1;
+        counts.set(type, (counts.get(type) || 0) + 1);
     }
 
-    if (commands.length <= MAX_COMMANDS) {
-        return commands;
+    for (const [type, count] of counts) {
+        const limit = limits.get(type);
+        if (limit !== undefined && count > limit) {
+            throw new Error(`Command type ${type}: ${count} exceeds limit ${limit}. Registration aborted to preserve existing commands.`);
+        }
+        logger.info(`Command type ${type}: ${count}${limit !== undefined ? `/${limit}` : ''}`);
     }
 
-    logger.warn(`Command count (${commands.length}) exceeds Discord limit (${MAX_COMMANDS}), truncating...`);
-    const truncated = commands.slice(0, MAX_COMMANDS);
-    logger.info(`Truncated to ${truncated.length} commands for registration`);
-    return truncated;
+    return commands;
 }
 
 async function registerGlobalCommands(client, clientId, commands, totalSubcommands) {
@@ -298,3 +308,7 @@ export async function reloadCommand(client, commandName) {
         return { success: false, message: `Error reloading command: ${error.message}` };
     }
 }
+
+
+
+

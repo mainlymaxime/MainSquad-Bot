@@ -2,10 +2,6 @@
 
 
 
-
-
-
-
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { fileURLToPath } from 'node:url';
 import { getCardAbility } from './cardAbilityService.js';
@@ -164,4 +160,3 @@ export async function createIdentityCard(client,member) {
 
 
 
-⋮⋮⋮⋮

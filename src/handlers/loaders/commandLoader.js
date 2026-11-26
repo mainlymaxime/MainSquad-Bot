@@ -9,6 +9,11 @@
 
 
 
+
+
+
+
+
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -285,16 +290,25 @@ export async function registerCommands(client, options = {}) {
 
     try {
         const { commands, totalSubcommands } = collectCommandPayloads(client);
-        const card = commands.find(command => command.name === 'card' && (command.type ?? 1) === 1);
-        const globalCommands = commands.filter(command => command !== card);
-        await registerGlobalCommands(client, clientId, globalCommands, totalSubcommands);
-        if (card) {
-            const channel = await client.channels.fetch('1575335887343059166');
-            if (!channel?.guildId) throw new Error('MainSquad Identity channel not found');
-            validateCommands([card]);
-            await client.rest.post(`/applications/${clientId}/guilds/${channel.guildId}/commands`, { body: card });
-            logger.info('MainSquad Identity /card registered in guild');
+        const localNames = ['card', 'hug', 'spank', 'hit', 'kiss', 'lick', 'yeet', 'highfive', 'interactionstats', 'interactionprivacy'];
+        const localCommands = commands.filter(command => (command.type ?? 1) === 1 && localNames.includes(command.name));
+        const missing = localNames.filter(name => !localCommands.some(command => command.name === name));
+        if (missing.length) throw new Error(`Missing MainSquad commands: ${missing.join(', ')}`);
+        const globalCommands = commands.filter(command => !localCommands.includes(command));
+        validateCommands(localCommands);
+        prepareCommandsForRegistration(localCommands);
+        const channel = await client.channels.fetch('1575335887343059166');
+        if (!channel?.guildId) throw new Error('MainSquad Identity channel not found');
+        const route = `/applications/${clientId}/guilds/${channel.guildId}/commands`;
+        // Upsert individually to preserve unrelated guild commands.
+        for (const command of localCommands) {
+            await client.rest.post(route, { body: command });
         }
+        await registerGlobalCommands(client, clientId, globalCommands, totalSubcommands);
+        const registered = await client.rest.get(route);
+        const confirmed = localNames.filter(name => registered.some(command => command.name === name && command.type === 1));
+        if (confirmed.length !== localNames.length) throw new Error(`Missing guild registrations: ${localNames.filter(name => !confirmed.includes(name)).join(', ')}`);
+        console.log(`[MainSquad] Guild commands confirmed: ${confirmed.map(name => '/' + name).join(', ')}`);
     } catch (error) {
         logger.error('Error registering commands:', error);
         throw error;
@@ -326,5 +340,5 @@ export async function reloadCommand(client, commandName) {
 }
 
 
-
+\
 

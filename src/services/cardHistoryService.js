@@ -1,13 +1,6 @@
 
 
 
-
-
-
-
-
-
-
 import { CARD_CHANNEL_ID, COMMUNITY_CHANNELS, poolFor, recordCardMessage, recordCardReaction } from './cardStatsService.js';
 import { logger } from '../utils/logger.js';
 const LOG='1460932149707411457';
@@ -25,12 +18,14 @@ async function* pages(channel){
 }
 async function once(pool,guild,source,work){
  if((await pool.query('SELECT 1 FROM identity_v3_import WHERE guild_id=$1 AND source=$2',[guild,source])).rowCount)return;
+ logger.info(`Identity import starting: ${source}`);
  await work();
  await pool.query('INSERT INTO identity_v3_import VALUES($1,$2) ON CONFLICT DO NOTHING',[guild,source]);
  logger.info(`Identity import complete: ${source}`);
 }
 async function importText(client,channel){
- for await(const page of pages(channel)) for(const m of page){
+ let scanned=0;
+ for await(const page of pages(channel)){ for(const m of page){
   await recordCardMessage(client,m);
   for(const reaction of m.reactions.cache.values()){
    let after;
@@ -41,6 +36,8 @@ async function importText(client,channel){
     after=[...users.keys()].reduce((a,b)=>BigInt(a)>BigInt(b)?a:b);
    }
   }
+ }
+ scanned+=page.length; logger.info(`Identity text ${channel.id}: ${scanned} scanned`);
  }
 }
 function parse(m,botId){
@@ -58,34 +55,49 @@ function parse(m,botId){
 async function importVoice(client,guild,pool,channel){
  // Walk backwards, pairing each closing event with its immediately preceding opening event.
  const pending=new Map();
+ let scanned=0, matched=0, paired=0;
  for await(const page of pages(channel)){
   page.sort((a,b)=>b.createdTimestamp-a.createdTimestamp || (BigInt(a.id)>BigInt(b.id)?-1:1));
   for(const m of page){
-   const e=parse(m,client.user.id);if(!e)continue;
+   const e=parse(m,client.user.id);if(!e)continue; matched++;
    const end=pending.get(e.user);
    const opened=e.type==='join'?e.channels[0]:e.type==='move'?e.channels[1]:null;
    if(end&&opened===end.channel&&opened!==guild.afkChannelId&&e.time<end.time){
+    paired++;
     await pool.query('INSERT INTO identity_v3_voice VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',[guild.id,e.user,end.id,end.time-e.time]);
    }
    if(e.type==='leave'||e.type==='move')pending.set(e.user,{channel:e.channels[0],time:e.time,id:e.id});
    else pending.delete(e.user);
   }
+  scanned+=page.length; logger.info(`Identity voice: ${scanned} scanned, ${matched} matched, ${paired} paired`);
  }
+}
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function runSource(client,guild,pool,id){
+ for(let attempt=1;attempt<=5;attempt++){
+  try{
+   await once(pool,guild.id,id,async()=>{
+    const channel=await guild.channels.fetch(id);
+    if(!channel?.messages)throw new Error(`Not a message channel: ${id}`);
+    if(!channel.permissionsFor(guild.members.me)?.has(['ViewChannel','ReadMessageHistory']))throw new Error(`Missing history permissions: ${id}`);
+    if(id===LOG)await importVoice(client,guild,pool,channel);else await importText(client,channel);
+   });
+   return;
+  }catch(e){
+   logger.error(`Identity import ${id} attempt ${attempt}: ${e.message}`);
+   if(attempt<5)await sleep(Math.min(60000,5000*2**(attempt-1)));
+  }
+ }
+ logger.error(`Identity import ${id} incomplete after retries; restart to resume`);
 }
 export async function importCardHistory(client){
  const pool=await poolFor(client);
  for(const guild of client.guilds.cache.values()){
   if(!guild.channels.cache.has(CARD_CHANNEL_ID))continue;
-  for(const id of [...COMMUNITY_CHANNELS,LOG]){
-   try{
-    await once(pool,guild.id,id,async()=>{
-     const channel=await guild.channels.fetch(id);
-     if(!channel?.messages)throw new Error(`Not a message channel: ${id}`);
-     if(!channel.permissionsFor(guild.members.me)?.has(['ViewChannel','ReadMessageHistory']))throw new Error(`Missing history permissions: ${id}`);
-     if(id===LOG)await importVoice(client,guild,pool,channel);else await importText(client,channel);
-    });
-   }catch(e){logger.error(`Identity import failed (${id}); retry on restart`,e);}
-  }
+  await Promise.all([
+   runSource(client,guild,pool,LOG),
+   (async()=>{for(const id of COMMUNITY_CHANNELS)await runSource(client,guild,pool,id);})()
+  ]);
  }
 }
 

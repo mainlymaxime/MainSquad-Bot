@@ -1,11 +1,18 @@
 
 
 
+
+
+
+
+
+
 // MainSquad Identity: deterministic activity-based abilities.
-export function getCardAbility({ messages, voiceMs, emojiCount, distinctEmoji, channelCount, topChannelCount }) {
+export function getCardAbility({ messages, voiceMs, emojiCount, distinctEmoji, channelCount, topChannelCount, reactionCount = 0 }) {
   const hours = voiceMs / 3600000;
-  if (messages < 10 && hours < 1) return { title: 'The New Kid', description: 'Het MainSquad-avontuur is net begonnen.' };
+  if (messages < 10 && hours < 1 && reactionCount < 10) return { title: 'The New Kid', description: 'Het MainSquad-avontuur is net begonnen.' };
   const choices = [
+    { score: reactionCount >= 10 ? reactionCount / 30 : 0, title: 'Reaction Royalty', description: 'Laat overal een kleine reactie achter.' },
     { score: messages / 250, title: 'Certified Yapper', description: 'Maakt van ieder gesprek een compleet nieuw avontuur.' },
     { score: hours / 5, title: 'Voice Addict', description: 'De voicechat voelt inmiddels als een tweede thuis.' },
     { score: hours >= 25 ? hours / 4 : 0, title: 'Permanent Resident', description: 'Heeft bijna een eigen postcode in de voicechat.' },
